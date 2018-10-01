@@ -8,7 +8,6 @@ libfile = os.path.dirname(__file__)
 libfile = os.path.join(libfile, "tt_irt1.so")
 lib = cdll.LoadLibrary(libfile)
 
-
 def tt_irt1(q, f, xsf):
     """ Inverse Rosenblatt sampler, linear splines
         Inputs:

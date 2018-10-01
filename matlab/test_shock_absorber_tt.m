@@ -55,7 +55,7 @@ if (nargin<5)||(isempty(n))
     n = 16;
 end
 if (nargin<6)||(isempty(nruns))
-    nruns = 32;
+    nruns = 8;
 end
 fprintf('\tNumber of samples: N=2^%d\n', log2N);
 fprintf('\tNumber of covariates: D=%d\n', D);

@@ -26,9 +26,9 @@ end
 check_lgwt; 
 
 if (~isfield(params, 'runs'))
-    params.runs = input('Number of test runs = ? (default 16): ');
+    params.runs = input('Number of test runs = ? (default 8): ');
     if (isempty(params.runs))
-        params.runs = 16;
+        params.runs = 8;
     end
 end
 if (~isfield(params, 'meshlevel'))
