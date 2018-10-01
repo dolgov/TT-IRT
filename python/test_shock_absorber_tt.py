@@ -6,6 +6,7 @@ from tt.cross.rectcross import rect_cross
 from tt_irt import tt_irt1
 import puwr
 import time
+import sys
 
 # log-prior distribution
 def logf_prior(theta, beta_mean, beta_var):
@@ -174,9 +175,11 @@ for irun in range(0,nruns):
     theta1 = np.exp(Z[:,0])
     theta2 = Z[:,d+1]
     q_post = theta1*((-np.log(q))**(1.0/theta2))
-    # IACT
-    dumpmean, delta, tint, d_tint = puwr.tauint(np.reshape(q_post, [1, 1, M]), 0)
-    tau[irun] = tint*2.0
+    # IACT -- only works in python 2.7
+    if sys.version_info<(3,0):
+        dumpmean, delta, tint, d_tint = puwr.tauint(np.reshape(q_post, [1, 1, M]), 0)
+        tau[irun] = tint*2.0
+
     print('tau = ' + repr(tau[irun]))
     q_post = np.mean(q_post)
     print('Mean quantile = ' + repr(q_post))
