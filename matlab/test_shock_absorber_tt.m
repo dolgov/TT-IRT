@@ -107,7 +107,7 @@ Q_iw = zeros(nruns, 2); % quantiles computed by IS method with QMC
 tauint_tt = zeros(nruns, 1); % IACT (after MH)
 
 
-parfor irun=1:nruns
+for irun=1:nruns
     tic;
     [pi,~,~,~,N_cross(irun,:)] = amen_cross_s(theta_tt, pifun, 0, 'kickrank', 2, 'y0', 8, 'tol_exit', delta);
     ttimes_cross(irun) = toc;
@@ -137,7 +137,7 @@ err_TT = nan;
 if (n_err_TT>1)
     pi = amen_sum(Pi, (1/n_err_TT)*ones(n_err_TT,1), 1e-6, 'fkick', true, 'y0', Pi{1}, 'kickrank', 16);
     err_TT = norm(pi)*ones(n_err_TT,1);
-    parfor irun=1:n_err_TT
+    for irun=1:n_err_TT
         err_TT(irun) = norm(Pi{irun} - pi)/err_TT(irun);
     end
     err_TT = sqrt(sum(err_TT.^2)/(n_err_TT-1)); % empirical standard deviation

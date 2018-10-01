@@ -67,7 +67,7 @@ N_dram = zeros(nruns, 1); % total number of pi evaluations
 num_of_rejects = zeros(nruns, 1); % number of rejections in DRAM
 tauint_dram = zeros(nruns, 1); % IACT
 
-parfor irun=1:nruns
+for irun=1:nruns
     % DRAM parameters
     options = struct();
     options.nsimu    = 2^log2N; % number of samples

@@ -4,7 +4,7 @@ function test_diffusion_dram(varargin)
 check_mcmc;
 
 % Parse parameters or ask a user for them
-params = parse_model_inputs(varargin{:});
+params = parse_diffusion_inputs(varargin{:});
 
 % A priori fitted function to map spatial meshlevel into space discr. error
 htolfun = @(x)(7.6742e-03*4^(-x-1)); % For the flux in the inverse problem
@@ -24,7 +24,7 @@ phil = full(phi*spdiags(sqrt(lambda), 0, L, L));
 % Simulate some observations
 if (exist(sprintf('Q_obs_nu%g_ml%d_sigman%g_m0%d_ytrue%g.mat', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0), 'file')>0)
     % Load the same KLE for all experiments
-    fprintf('Found Obs file for nu=%g, ml=%d, sn=%g, m0=%d, y0=%g\nRemove it to regenerate the observations\n', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0);
+    fprintf('Found Q_obs file for nu=%g, ml=%d, sn=%g, m0=%d, y0=%g\nRemove it to regenerate the observations\n', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0);
     load(sprintf('Q_obs_nu%g_ml%d_sigman%g_m0%d_ytrue%g.mat', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0));
     Q_obs = Q_obs + 0; % Parallel toolbox still sucks
 else
@@ -36,7 +36,7 @@ ttimes_dram = zeros(params.runs, 1);
 tau_dram = zeros(params.runs, 3);
 num_of_rejects = zeros(params.runs, 1);
 
-parfor irun=1:params.runs
+for irun=1:params.runs
     % DRAM parameters
     options = struct();
     options.nsimu    = 2^params.log2N; % number of samples

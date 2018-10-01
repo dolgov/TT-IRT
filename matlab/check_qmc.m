@@ -7,5 +7,6 @@ if (exist('lattice-39102-1024-1048576.3600.txt', 'file')==0)
     catch ME
         error('%s. Automatic download failed. Please download lattice-39102-1024-1048576.3600.txt into this directory', ME.message);
     end
+    fprintf('Success!\n');
 end
 end

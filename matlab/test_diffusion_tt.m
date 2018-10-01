@@ -4,7 +4,7 @@ function test_diffusion_tt(varargin)
 check_tt;
 
 % Parse parameters or ask a user for them
-params = parse_model_inputs(varargin{:});
+params = parse_diffusion_inputs(varargin{:});
 % Extra parameters (only for TT)
 if (~isfield(params, 'ny'))
     params.ny = input('Gauss grid size for the forward map ny = ? (default 7): ');
@@ -25,13 +25,13 @@ if (~isfield(params, 'delta'))
     end
 end
 if (~isfield(params, 'rmax'))
-    params.rmax = input('Max TT rank = ? (default 800): ');
+    params.rmax = input('Max TT rank rmax = ? (default 800): ');
     if (isempty(params.rmax))
         params.rmax = 800;
     end
 end
 if (~isfield(params, 'correction'))
-    params.correction = input('Debiasing algorithm = ? (''mcmc'' or ''iw'') (default ''mcmc''): ');
+    params.correction = input('Algorithm of debiasing correction = ? (''mcmc'' or ''iw'') (default ''mcmc''): ');
     if (isempty(params.correction))
         params.correction = 'mcmc';
     end
@@ -75,7 +75,7 @@ u_av = cell(1, params.runs);  % Storage for prior observations
 ttimes_forward = zeros(params.runs, 1);
 nsolves_forward = zeros(params.runs, 1);
 % Run the forward model, compute prior observables
-parfor irun=1:params.runs
+for irun=1:params.runs
     tic;
     
     % Create the affine expansion.
@@ -121,7 +121,7 @@ end % irun
 % Simulate some observations
 if (exist(sprintf('Q_obs_nu%g_ml%d_sigman%g_m0%d_ytrue%g.mat', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0), 'file')>0)
     % Load the same KLE for all experiments
-    fprintf('Found Obs file for nu=%g, ml=%d, sn=%g, m0=%d, y0=%g\nRemove it to regenerate the observations\n', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0);
+    fprintf('Found Q_obs file for nu=%g, ml=%d, sn=%g, m0=%d, y0=%g\nRemove it to regenerate the observations\n', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0);
     load(sprintf('Q_obs_nu%g_ml%d_sigman%g_m0%d_ytrue%g.mat', params.nu, params.meshlevel, params.sigma_n, params.m0, params.y0));
 else
     fprintf('Generating Q_obs from the current solution\n');
@@ -151,7 +151,7 @@ tau_tt = zeros(params.runs, 3);
 
 % Fire up Bayesian runs
 Pi = cell(1,params.runs);
-parfor irun=1:params.runs
+for irun=1:params.runs
     u_av{irun} = P_lgwt_uni*u_av{irun};
     u_av{irun} = tt_reshape(u_av{irun}, repmat(factor(params.npi)', L, 1), tol*1e-2, params.m0^2, 1);
     
@@ -186,7 +186,7 @@ end % irun
 
 % Estimate error in Pi
 pi = amen_sum(Pi, (1/params.runs)*ones(params.runs,1), 1e-4, 'y0', Pi{1}, 'fkick', true, 'kickrank', 64);
-parfor irun=1:params.runs
+for irun=1:params.runs
     err_Pi(irun) = norm(Pi{irun} - pi);
 end
 err_Pi = err_Pi/norm(pi);
