@@ -80,5 +80,13 @@ fprintf('\tnum_of_rejects: %g (out of N=%d)\n', mean(num_of_rejects), 2^params.l
 fprintf('\tIACT for [y, F, P]: [%g %g %g]\n', mean(tau_dram(:,1)), mean(tau_dram(:,2)), mean(tau_dram(:,3)));
 fprintf('\tQ_dram: [%g %g]+-[%g %g]\n', mean(Q_dram(:,1)), mean(Q_dram(:,2)), sqrt(sum((Q_dram(:,1)-mean(Q_dram(:,1))).^2)/(params.runs-1)),  sqrt(sum((Q_dram(:,2)-mean(Q_dram(:,2))).^2)/(params.runs-1)));
 
+
+% Copy vars to main space
+vars = whos;
+for i=1:numel(vars)
+    if (exist(vars(i).name, 'var'))
+        assignin('base', vars(i).name, eval(vars(i).name));
+    end
+end
 end
 

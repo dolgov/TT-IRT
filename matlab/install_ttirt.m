@@ -103,7 +103,7 @@ if (isempty(req))
 end
 fprintf('\tGot %g\n', req);
 if (req)    
-    for fname={'test_shock_absorber_tt.m', 'test_shock_absorber_dram.m', 'test_diffusion_tt.m', 'test_diffusion_dram.m'}
+    for fname={'test_shock_absorber_tt.m', 'test_shock_absorber_dram.m', 'test_diffusion_tt.m', 'test_diffusion_dram.m', 'test_diffusion_qmcrat.m'}
         fprintf('Patching %s to parfor\n', fname{1});
         txt = fileread(fname{1});
         if (~contains(txt, 'parfor irun'))
@@ -114,7 +114,7 @@ if (req)
         end
     end
 else
-    for fname={'test_shock_absorber_tt.m', 'test_shock_absorber_dram.m', 'test_diffusion_tt.m', 'test_diffusion_dram.m'}
+    for fname={'test_shock_absorber_tt.m', 'test_shock_absorber_dram.m', 'test_diffusion_tt.m', 'test_diffusion_dram.m', 'test_diffusion_qmcrat.m'}
         fprintf('Patching %s to sequential for\n', fname{1});
         txt = fileread(fname{1});
         if (contains(txt, 'parfor irun'))
