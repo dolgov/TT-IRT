@@ -185,11 +185,15 @@ for irun=1:params.runs
 end % irun
 
 % Estimate error in Pi
-pi = amen_sum(Pi, (1/params.runs)*ones(params.runs,1), 1e-4, 'y0', Pi{1}, 'fkick', true, 'kickrank', 64);
-for irun=1:params.runs
-    err_Pi(irun) = norm(Pi{irun} - pi);
+if (params.runs>1)
+    pi = amen_sum(Pi, (1/params.runs)*ones(params.runs,1), 1e-4, 'y0', Pi{1}, 'fkick', true, 'kickrank', 64);
+    for irun=1:params.runs
+        err_Pi(irun) = norm(Pi{irun} - pi);
+    end
+    err_Pi = err_Pi/norm(pi);
+else
+    err_Pi = nan;
 end
-err_Pi = err_Pi/norm(pi);
 
 
 % Print some statsy information
