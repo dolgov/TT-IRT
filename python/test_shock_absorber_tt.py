@@ -85,11 +85,11 @@ def crossfun(ind, theta, x, y, censind, beta_mean, beta_var):
 
 ###################### MAIN ###############
 
-d = 6
-n = 16
-tol = 5e-2
-lvls = 16
-nruns = 8
+d = 6       # number of covariates
+n = 16      # grid size
+tol = 5e-2  # TT stopping threshold
+log2N = 16  # log2(number of samples)
+runs = 8    # number of runs
 
 y = [6700, 6950, 7820, 8790, 9120, 9660, 9820, 11310, 11690, 11850, 11880, 12140, 12200,
      12870, 13150, 13330, 13470, 14040, 14300, 17520, 17540, 17890, 18420, 18960,
@@ -128,12 +128,12 @@ x = np.reshape(x, [d, np.size(y)], order='F')
 # short index function for cross
 myfun = lambda ind: crossfun(ind, theta, x, y, censind, beta_mean, beta_var)
 
-print('Running '+repr(nruns)+' tests for '+repr(d)+' covariates, producing '+repr(2**lvls)+' samples')
+print('Running '+repr(runs)+' tests for '+repr(d)+' covariates, producing '+repr(2**log2N)+' samples')
 print('')
 
-Q_py = nruns*[None]
-tau = nruns*[None]
-for irun in range(0,nruns):
+Q_py = runs*[None]
+tau = runs*[None]
+for irun in range(0,runs):
     # Run cross
     f0 = tt.rand(n, d+2, 8)
     f = rect_cross.cross(myfun, f0, nswp=50, kickrank=2, rf=2, eps=tol)
@@ -141,7 +141,7 @@ for irun in range(0,nruns):
 
 
     # Seed points
-    M = 2**lvls
+    M = 2**log2N
     q = np.random.random([M, d+2])
     q = np.reshape(q, [M, d+2], order = 'F')
 
@@ -188,6 +188,6 @@ for irun in range(0,nruns):
 
 print('')
 print('TT Shock absorber completed. Some average values:')
-print('Q_py = '+repr(np.mean(Q_py))+' +- '+repr(np.sqrt(np.sum((Q_py - np.mean(Q_py))**2)/(nruns-1))) )
-print('tau = '+repr(np.mean(tau))+' +- '+repr(np.sqrt(np.sum((tau - np.mean(tau))**2)/(nruns-1))) )
+print('Q_py = '+repr(np.mean(Q_py))+' +- '+repr(np.sqrt(np.sum((Q_py - np.mean(Q_py))**2)/(runs-1))) )
+print('tau = '+repr(np.mean(tau))+' +- '+repr(np.sqrt(np.sum((tau - np.mean(tau))**2)/(runs-1))) )
 
