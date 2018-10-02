@@ -58,7 +58,7 @@ if (~isfield(params, 'y0'))
 end
 
 if (~isfield(params, 'log2N'))
-    params.log2N = input('log2-number of samples in the chain log2N = ? (default 14): ');
+    params.log2N = input('log2(number of samples in the chain) log2N = ? (default 14): ');
     if (isempty(params.log2N))
         params.log2N = 14;
     end
