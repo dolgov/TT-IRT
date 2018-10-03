@@ -34,7 +34,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
  */
 {
   double *A, *B, *C, *dj;
-  mwIndex n, m, k, s, dims[3], i, j, il;
+  mwIndex n, m, k, s, dims[3], i, j;
 
   if (nrhs<2) { mexPrintf("Specify at least A and j\n"); return; }
 
@@ -70,7 +70,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   else {
     /* Just sample here */
     for (i=0; i<n; i++) {
-      j = (mwIndex)dj[i+il];
+      j = (mwIndex)dj[i];
       j--; /* matlab->C indexing */
       C[i] = A[i + j*n];
     }
