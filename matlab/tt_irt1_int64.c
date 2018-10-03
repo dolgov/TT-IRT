@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 // this may change depending on the caller and blas/lapack distribution
-#define lapackint long  // for MATLAB
+#define lapackint long long // for MATLAB
 
 // fortran
 double done = 1.0;
