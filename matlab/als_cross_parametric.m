@@ -1,22 +1,42 @@
 function [u,time_extern,funevals]=als_cross_parametric(coeff, assem_solve_fun, tol, varargin)
 % TT ALS-Cross algorithm.
+%   [u,time_extern,funevals]=ALS_CROSS_PARAMETRIC(coeff, assem_solve_fun, tol, varargin)
+%
 % Inputs:
-%   coeff: block TT format with the enumerator in the first rank, the
-%       first block corresponds to the deterministic part, the rest are params
-%   assem_solve_fun: takes the coefficients Ci of size [Mc, N, r] and returns
-%       cell arrays U,A,F, respectively solutions, matrices and RHS at the
-%       given Ci (assemble and solve), or just U (solve only)
+%   coeff: (d+1)-dimensional block TT format storing coefficients, with the
+%       first TT rank Mc corresponding to different coefficients, and the 
+%       entire first TT block corresponding to the deterministic part with 
+%       Nxc degrees of freedom in the deterministic variable. The other 
+%       TT blocks correspond to the d (stochastic) parameters.
+%   assem_solve_fun: a handle to the function which should take the 
+%       coefficients Ci of size [Mc, Nxc, r] and return cell arrays U,A,F, 
+%       respectively solutions, matrices and RHS at the given Ci. 
+%       Here r is the TT rank of the solution in the first TT block.
+%       U,A,F must be cell arrays of size 1 x r, each snapshot U{i} must be
+%       a column vector of size Nxu x 1, each snapshot F{i} must be a 
+%       column vector of size Nxa x 1, and each matrix A{i} must be a
+%       Nxa x Nxa matrix.
+%       Alternatively, if the 'funarg' option (see below) is switched to 
+%       'indices', assem_solve_fun should take indices of parameters where
+%       the systems must be solved, in the form of r x d integer matrix,
+%       with elements in the k-th column ranging from 1 to n_k, the number
+%       of grid points in the k-th parameter. The output format is the same
+%       !!! In both cases, A and F should depend near linearly on coeff !!!
 %   tol: cross truncation and stopping tolerance
 %
 % Optional inputs given in varargin:
 %   Pua: a matrix to project spatial block of solution to spat. block of matrix
 %       For good performance, Pua should be a full rank projector, with
-%       size(Pua)==[nxa,nxu] with nxu>=nxa.
-%       Default empty Pua assumes nxu==nxa.
+%       size(Pua)==[Nxa,Nxu] with Nxu>=Nxa.
+%       Default empty Pua assumes Nxu==Nxa.
 %   nswp: max number of iterations (default 5)
 %   kickrank: max TT rank of the residual/enrichment (default 10)
 %   random_init: if greater than 0, take random_init random indices at
 %       start; if 0 (default), take maxvol indices of coeff
+%   funarg: selects the type of input for assem_solve_fun:
+%           'values' (default) assumes that the function takes values of
+%                    the coefficients,
+%           'indices' assumes that the function takes indices of parameters
 %
 % Outputs:
 %   u: the solution in the TT format
@@ -28,6 +48,7 @@ nswp = 5;
 kickrank = 10; % The base for enrichment rank. The actual ranks are scaled to the coeff. ranks
 Pua = []; % A matrix that maps spatial DOFS of the solution to the spatial DOFs of the matrix/rhs
 random_init = 0; % If >0, start with random indices, instead of the coefficient
+funarg = 'values'; % whether assem_solve_fun takes values or indices
 
 % Parse parameters
 i = 1;
@@ -42,6 +63,8 @@ while (i<length(vars))
             Pua = vars{i+1};
         case 'random_init'
             random_init = vars{i+1};
+        case 'funarg'
+            funarg = lower(vars{i+1});
         otherwise
             warning('Option %s was not recognized', vars{i});
     end
@@ -51,7 +74,7 @@ end
 % All grid sizes
 ny = coeff.n;
 d = numel(ny);
-nxc = ny(1); % Spatial grid size of the coefficient
+Nxc = ny(1); % Spatial grid size of the coefficient
 ny = ny(2:d); % Parametric grid sizes
 d = d-1; % Consider d to be param. dimension only
 rc = coeff.r; % TT ranks of the coefficient
@@ -82,6 +105,10 @@ if (kickrank>0)
 end
 
 xi = ones(1,random_init);
+if (strcmp(funarg, 'indices'))
+    % Initialise global indices if the user function works with them
+    Ju = [];
+end
 
 % First, orthogonalize the coefficient.
 % We can derive its optimal indices (as an initial guess), or use random
@@ -101,6 +128,12 @@ for i=d:-1:1
     crc = CC\crc;
     v = CC.'*v;
     coeff{i} = reshape(crc, rc(i), ny(i), rc(i+1));
+    
+    if (strcmp(funarg, 'indices'))
+        % Collect global parameter indices for the deterministic solver
+        Ju = [repmat((1:ny(i))', rc(i+1),1), reshape(repmat(Ju(:)', ny(i), 1), ny(i)*rc(i+1), d-i)];
+        Ju = Ju(ind, :);
+    end
     
     if (random_init)&&(i>1)
         % Random-sample coeff from the right
@@ -137,12 +170,12 @@ u = cell(d,1);
 U0 = [];
 
 % The coefficient+rhs at sampled indices
-C0 = reshape(C0, Mc*nxc, []); % size Mc*nx, rc1
+C0 = reshape(C0, Mc*Nxc, []); % size Mc*Nxc, rc1
 C0 = C0*v.';
 % This is the spatial block of the coefficient, in the representation when
 % all parametric blocks contain identity matrices.
 % The coeff will not change anymore
-C0 = reshape(C0, Mc, nxc, rc(1));
+C0 = reshape(C0, Mc, Nxc, rc(1));
 
 % Initialise cost profilers
 time_extern = [0, 0];  % 1 - solve, 2 - project
@@ -159,13 +192,17 @@ while (swp<=nswp)
         % Previous guess (if we have one)
         Uprev = U0;
         % Solve deterministic problems at the U-indices
-        % Construct the coeff there
-        Ci = reshape(C0, Mc*nxc, [])*UC{1}; % size Mc*nx, rc1
-        Ci = reshape(Ci, Mc, nxc, ru(1));
+        if (strcmp(funarg, 'indices'))
+            Ci = Ju;
+        else
+            % Construct the coeff there
+            Ci = reshape(C0, Mc*Nxc, [])*UC{1}; % size Mc*Nxc, rc1
+            Ci = reshape(Ci, Mc, Nxc, ru(1));
+        end
         t1__uc = tic;
         if (swp==1)
             [U0,A0s,F0] = assem_solve_fun(Ci);
-            nxa = size(A0s{1},1); % number of spatial DOFS in A (can differ from nxc!)
+            Nxa = size(A0s{1},1); % number of spatial DOFS in A (can differ from Nxc!)
             F0 = cell2mat(F0);
             % In the first sweep, Ci==C0, and we need the corresponding
             % matrices (A0s) and RHS (F0), since we'll use them in
@@ -178,8 +215,8 @@ while (swp<=nswp)
         clear Ci; % save some mem
         funevals = funevals + ru(1);
         U0 = cell2mat(U0);
-        nxu = size(U0,1); % this, again, can differ from nxa or nxc
-        if (nxu~=nxa)&&(isempty(Pua))
+        Nxu = size(U0,1); % this, again, can differ from Nxa or Nxc
+        if (Nxu~=Nxa)&&(isempty(Pua))
             error('Numbers of spatial DOFs in u and A differ, and no transformation matrix is given. Unable to reduce model');
         end
         
@@ -211,10 +248,10 @@ while (swp<=nswp)
             % Compute the residual
             % Compute A*U at Z indices
             cru = U0*v*ZU{1};
-            if (nxa~=nxu)
-                cru = Pua*cru; % size nxa x rz1
+            if (Nxa~=Nxu)
+                cru = Pua*cru; % size Nxa x rz1
             end
-            Z0 = zeros(nxa, rz(1));
+            Z0 = zeros(Nxa, rz(1));
             for j=1:rz(1)
                 crA = A0s{1}*ZC{1}(1,j);
                 for k=2:rc(1)
@@ -226,8 +263,8 @@ while (swp<=nswp)
             % QR it
             [Z0,~]=qr(Z0,0);
             rz(1) = size(Z0,2);
-            if (nxa~=nxu)
-                cru = [U0, Pua'*Z0]; % make it nxu x rz(1)
+            if (Nxa~=Nxu)
+                cru = [U0, Pua'*Z0]; % make it Nxu x rz(1)
             else
                 cru = [U0, Z0];
             end
@@ -247,7 +284,7 @@ while (swp<=nswp)
         t1__uc = tic;
         UAU_new = cell(1,rc(1));
         Uprev = U0;
-        if (nxa~=nxu)
+        if (Nxa~=Nxu)
             Uprev = Pua*U0; % Project U0 to the size of A
         end
         for j=1:rc(1)
@@ -547,6 +584,11 @@ while (swp<=nswp)
             ru(i) = size(cru,1);
             u{i} = reshape(cru, ru(i), ny(i), ru(i+1));
             
+            if (strcmp(funarg, 'indices'))
+                Ju = [repmat((1:ny(i))', ru(i+1),1), reshape(repmat(Ju(:)', ny(i), 1), ny(i)*ru(i+1), d-i)];
+                Ju = Ju(ind, :);
+            end            
+            
             % Projection from the right -- sample C on U indices
             UC{i} = reshape(coeff{i}, rc(i)*ny(i), rc(i+1));
             UC{i} = UC{i}*UC{i+1};
@@ -585,6 +627,9 @@ while (swp<=nswp)
         dir = -dir;
         swp = swp+1;
         max_dx = 0;
+        if (strcmp(funarg, 'indices'))
+            Ju = [];
+        end
     end
     if (i==0)&&(dir<0)
         % turn at the left end
@@ -593,7 +638,7 @@ while (swp<=nswp)
     end
 end
 
-U0 = reshape(U0, 1, nxu, ru(1));
+U0 = reshape(U0, 1, Nxu, ru(1));
 u = [{U0}; u];
 u = cell2core(tt_tensor, u);
 end
