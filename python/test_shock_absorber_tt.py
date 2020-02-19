@@ -4,9 +4,13 @@ import tt
 import tt.cross
 from tt.cross.rectcross import rect_cross
 from tt_irt import tt_irt1
-import puwr
 import time
 import sys
+
+try:
+    import puwr
+except:
+    print("Couldn't import puwr, you may correct print statements there for Python3")
 
 # log-prior distribution
 def logf_prior(theta, beta_mean, beta_var):
@@ -175,10 +179,13 @@ for irun in range(0,runs):
     theta1 = np.exp(Z[:,0])
     theta2 = Z[:,d+1]
     q_post = theta1*((-np.log(q))**(1.0/theta2))
-    # IACT -- only works in python 2.7
-    if sys.version_info<(3,0):
+    # IACT -- only works in python 2.7 due to bad print
+    try:
         dumpmean, delta, tint, d_tint = puwr.tauint(np.reshape(q_post, [1, 1, M]), 0)
         tau[irun] = tint*2.0
+    except:
+        pass
+
 
     print('tau = ' + repr(tau[irun]))
     q_post = np.mean(q_post)
@@ -189,5 +196,9 @@ for irun in range(0,runs):
 print('')
 print('TT Shock absorber completed. Some average values:')
 print('Q_py = '+repr(np.mean(Q_py))+' +- '+repr(np.sqrt(np.sum((Q_py - np.mean(Q_py))**2)/(runs-1))) )
-print('tau = '+repr(np.mean(tau))+' +- '+repr(np.sqrt(np.sum((tau - np.mean(tau))**2)/(runs-1))) )
+try:
+    print('tau = '+repr(np.mean(tau))+' +- '+repr(np.sqrt(np.sum((tau - np.mean(tau))**2)/(runs-1))) )
+except:
+    pass
+
 

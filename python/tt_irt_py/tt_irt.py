@@ -1,11 +1,13 @@
 from ctypes import cdll, c_int, c_double, POINTER
 import numpy as np
 import os
+import glob
 
 import tt
 
 libfile = os.path.dirname(__file__)
-libfile = os.path.join(libfile, "tt_irt1.so")
+libfile = os.path.join(libfile, "tt_irt1*")
+libfile = glob.glob(libfile)[0]
 lib = cdll.LoadLibrary(libfile)
 
 def tt_irt1(q, f, xsf):
