@@ -1,9 +1,13 @@
 # TT-IRT
 Inverse Rosenblatt Transform (Conditional Distribution) + MCMC sampling using Tensor Train approximation
 
-Algorithms and running codes for the paper "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[arXiv:1810.01212](https://arxiv.org/abs/1810.01212)] by Sergey Dolgov, Karim Anaya-Izquierdo, Colin Fox and Robert Scheichl.
+Algorithms and running codes for the paper "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] by Sergey Dolgov, Karim Anaya-Izquierdo, Colin Fox and Robert Scheichl.
 
 The toolbox consists of **matlab** and **python** parts. Moreover, the conditional distribution sampler (TT-CD) is also implemented in C with two types of integers, `matlab/tt_irt1_int64.c` and `python/tt_irt_py/tt_irt1_int32.c` which can be linked into Matlab MEX, Python CTypes or other project.
+
+### Changelog
+This is Version 1.0 as it was run for the original numerical experiments in the paper.
+Consider using a higher version (e.g. the *master* branch) for up-to-date algorithms.
 
 ### Installation
 
