@@ -1,16 +1,19 @@
-function [xq, Fapp]=tt_irt(xsf, f, q)
-% Inverse CDF (Rosenblatt) transform through the density F
-% This version computes inverses in each variable via quadratic splines
+function [xq, lFapp]=tt_irt(xsf, f, q)
+% Inverse CDF (Rosenblatt) transform through linear splines of density F
+% This version computes CDF inverses in each variable via quadratic splines
 % Inputs (sizes):
 %   xsf: (d x 1) cell array of grid points (inc. boundaries) for all dimensions
-%   f: TT format of the PDF (tt_tensor), computed on a grid 
-%      _without left borders_, i.e. f must be evaluated at xsf{i}(2:end) 
-%      in the i-th direction.
+%   f: TT format of the PDF (tt_tensor), computed on a grid given in xsf
 %   q: seed points from [0,1]^d, defining the samples (an M x d matrix)
+%
 % Outputs (sizes):
 %   xq: samples mapped from q by the inverse CDF (M x d matrix)
-%   Fapp: approximate PDF (inv. Jacobian of xq) sampled on q
+%   lFapp: log(approximate PDF) (inv. Jacobian of xq) sampled on q
 
+
+if any(q(:)<-1e-12)||any(q(:)>1+1e-12)
+    keyboard;
+end
 
 if (isa(f, 'tt_tensor'))
     f = core2cell(f);
@@ -24,44 +27,41 @@ rf = [1; cellfun(@(x)size(x,3), f)];
 if (isa(xsf, 'cell'))
     xsf = cell2mat(xsf);
 end
-if (size(xsf,1)~=sum(n+1))
-    error('number of grid points in xf should be n+1');
+if (size(xsf,1)~=sum(n))
+    error('number of grid points in xsf should be sum of mode sizes in f');
 end
-pos = cumsum([1; n+1]); % positions where each x grid vector starts
+pos = cumsum([1; n]); % positions where each x grid vector starts
 
-% Prepare integrated right TT blocks (C array)
-C = cell(d+1,1);
-C{d+1} = 1;
+% Prepare integrated right TT blocks (P array)
+P = cell(d,1);
+Pprev = 1;
 h = cell(d,1); % array of grid intervals
 for k=d:-1:1
     % Grid intervals
-    h{k} = xsf(pos(k)+1:pos(k)+n(k)) - xsf(pos(k):pos(k)+n(k)-1);
-    % Linear-spline integration of (k..d)-th TT blocks
-    C{k} = reshape(f{k}, rf(k)*n(k), rf(k+1));
-    C{k} = C{k}*C{k+1};
-    C{k} = reshape(C{k}, rf(k), n(k));
-    % extrapolate it linearly to the leftmost point, since f^(k) does not
-    % contain it
-    Aq = (xsf(pos(k)+2)-xsf(pos(k)))/h{k}(2);
-    Bq = (xsf(pos(k))-xsf(pos(k)+1))/h{k}(2);
-    fk = Aq*C{k}(:,1) + Bq*C{k}(:,2);
-    C{k} = [fk, C{k}];
-    
-    % integrate via trapezoidal rule. It's faster using a sparse matrix
-    fk = reshape(h{k}, 1, n(k));
-    fk = repmat(fk, rf(k), 1);
-    S = spdiags(0.5*ones(n(k)+1,2), -1:0, n(k)+1, n(k));
-    C{k} = (C{k}*S).*fk;
-    C{k} = [zeros(rf(k),1), C{k}];
-    C{k} = sum(C{k}, 2);
+    h{k} = zeros(1,n(k));
+    h{k}(2:n(k)) = xsf(pos(k)+1:pos(k)+n(k)-1) - xsf(pos(k):pos(k)+n(k)-2);    
+    % Prepare semi-marginal f^{(k)}*C{k}, to be integrated into a CDF    
+    P{k} = reshape(f{k}, rf(k)*n(k), rf(k+1));
+    P{k} = P{k}*Pprev;
+    P{k} = reshape(P{k}, rf(k), n(k));
+    f{k} = permute(f{k}, [1,3,2]); % this is needed for tracemult conditioning
+    if (k>1)
+        % integrate via trapezoidal rule, equiv to
+        % Linear-spline integration of (k..d)-th TT blocks
+        % It's faster using a sparse matrix
+        S = spdiags(0.5*ones(n(k),2), 0:1, n(k), n(k));
+        Pprev = P{k}*S;
+        Pprev = Pprev.*repmat(h{k}, rf(k), 1);
+        Pprev = sum(Pprev, 2);
+    end
 end
-% Now each C{k} = \int f^{(>k)}(x_k...x_d) dx_{>k}
+% Now each P{k} = \int f^{(>=k)}(x_k...x_d) dx_{>k}
 
 % Storage for x and approx. density
 M = size(q,1);
 xq = zeros(M,d);
 if (nargout>1)
-    Fapp = ones(M,1);
+    lFapp = zeros(M,1);
 end
 
 % Iterate forward, computing conditional PDFs
@@ -74,47 +74,38 @@ for i_block=1:num_blocks
     if (i_block*Mb>M)
         Mb = M - start_pos + 1;
     end
-    fkm1 = ones(Mb,1); % This will store conditioned left TT blocks f^{(<k)}(x_{<k}^*)
+    fkm1 = ones(1, Mb); % This will store conditioned left TT blocks f^{(<k)}(x_{<k}^*)
     
     for k=1:d
         %%% Prepare 1D PDF and CDF
-        % Prepare semi-marginal f^{(k)}*C{k}, to be integrated into a CDF
-        Ck = reshape(f{k}, rf(k)*n(k), rf(k+1));
-        Ck = Ck*C{k+1};
-        Ck = reshape(Ck, rf(k), n(k));
-        % extrapolate it to leftmost point
-        Aq = (xsf(pos(k)+2)-xsf(pos(k)))/h{k}(2);
-        Bq = (xsf(pos(k))-xsf(pos(k)+1))/h{k}(2);
-        fk = Aq*Ck(:,1) + Bq*Ck(:,2);
-        fk = [fk, Ck];
         % Condition on left variables -- multiply with sampled left TT blocks
-        fk = fkm1*fk;
-        % make this nonnegative. ALT: subtract the minimal neg value?
+        fk = fkm1.'*P{k};
+        % make this nonnegative.
         fk = abs(fk);
-%         fk = fk - repmat(min(fk,[],2), 1, n(k)+1); % doesn't work well...
         % Integrate up to whole points using sparse mv
-        Ck = reshape(h{k}, 1, n(k));
-        Ck = repmat(Ck, Mb, 1);
-        S = spdiags(0.5*ones(n(k)+1,2), -1:0, n(k)+1, n(k));
-        Ck = (fk*S).*Ck;
-        Ck = [zeros(Mb,1), Ck];
+        S = spdiags(0.5*ones(n(k),2), 0:1, n(k), n(k));
+        Ck = fk*S;
+        Ck = Ck.*repmat(h{k}, Mb, 1);       
         Ck = cumsum(Ck, 2);
-        
+
         % normalize
-        Cmax = Ck(:,n(k)+1);
+        Cmax = Ck(:,n(k));
         ind_zero = find(Cmax==0);
-        Cmax = repmat(Cmax, 1, n(k)+1);
+        % Eliminate possible exact zeros
+        if (~isempty(ind_zero))
+            fk(ind_zero, :) = 1;
+            Ck(ind_zero, :) = repmat(cumsum(h{k}, 2), numel(ind_zero), 1);
+            Cmax(ind_zero) = Ck(ind_zero,n(k));
+        end
+        Cmax = repmat(Cmax, 1, n(k));
         Ck = Ck./Cmax;
         fk = fk./Cmax;
-        % Eliminate possible exact zeros
-        Ck(ind_zero, :) = repmat(0:(1/n(k)):1, numel(ind_zero), 1);
-        fk(ind_zero, :) = (1/n(k))*ones(numel(ind_zero), n(k)+1);
         
         %%% Invert the marginal CDF Ck
         % Binary search for the closest to q points
         qk = q(start_pos:(start_pos+Mb-1),k);
         i0 = ones(Mb,1);
-        i2 = (n(k)+1)*ones(Mb,1);
+        i2 = n(k)*ones(Mb,1);
         while (any((i2-i0)>1))
             i1 = floor((i0+i2)/2);
             C1 = tracemult(Ck, i1); % MEXed extraction C1(i) = Ck(i,i1(i));
@@ -129,22 +120,34 @@ for i_block=1:num_blocks
         f1 = tracemult(fk,i0);      % f1(i) = fk(i,i0(i));
         f2 = tracemult(fk, i0+1);   % f1(i) = fk(i,i0(i)+1);
         % We can miss a point, check that
-        ind_missed = find((C1>(qk+1e-8)) | (C2<(qk-1e-8)));
+        ind_missed = find((C1>(qk+1e-12)) | (C2<(qk-1e-12)));
+        if (numel(ind_missed)>0)
+            keyboard;
+        end
         % Solve the _quadratic_ equation, since C is an integrand of linear
         % interpolant f
         x1 = xsf(pos(k)+i0-1);  % grid points at i0, i0+1
         x2 = xsf(pos(k)+i0);
         h3 = x2 - x1; % grid intervals
-        Aq = 0.5*(f2-f1)./h3;
-        Bq = (f1.*x2 - f2.*x1)./h3;
-        Dq = (2*Aq.*x1+Bq).^2 + 4*Aq.*(qk-C1);
-        xk = 0.5*(-Bq + sqrt(abs(Dq)))./Aq;
-        ind_left = find(Aq==0); % At these indices we need to solve a linear equation
-        xk(ind_left) = x1(ind_left) + (qk(ind_left)-C1(ind_left))./Bq(ind_left);
-        % wrong bin search can lead to a wrong solution. Replace those xk
-        % by midpoints
-        xk(ind_missed) = (x1(ind_missed) + x2(ind_missed))*0.5;
         
+        Aq = 0.5*(f2-f1)./h3;
+        Dq = f1.^2 + 4*Aq.*(qk-C1);
+        xk = x1 + (-f1 + sqrt(abs(Dq)))./(2*Aq);
+        ind_missed = find(Aq==0); % At these indices we need to solve a linear equation
+        xk(ind_missed) = x1(ind_missed) + (qk(ind_missed)-C1(ind_missed))./f1(ind_missed);
+
+        % Check if we are outside the range
+        ind_missed = find(xk>x2);
+%         if (numel(ind_missed)>0)&&any(xk(ind_missed)-x2(ind_missed)>1e-10)
+%             keyboard;
+%         end
+        xk(ind_missed) = x2(ind_missed);
+        ind_missed = find(xk<x1);
+%         if (numel(ind_missed)>0)&&any(x1(ind_missed)-xk(ind_missed)>1e-10)
+%             keyboard;
+%         end        
+        xk(ind_missed) = x1(ind_missed);
+                        
         xq(start_pos:(start_pos+Mb-1),k) = xk;
         
         % Linear interpolation coefficients into xk
@@ -155,25 +158,18 @@ for i_block=1:num_blocks
             % this is our actual conditional probability at the k-th step
             % The whole density is a product of those
             fk = f1.*Aq + f2.*Bq;
-            Fapp(start_pos:(start_pos+Mb-1)) = Fapp(start_pos:(start_pos+Mb-1)).*fk;
+            lFapp(start_pos:(start_pos+Mb-1)) = lFapp(start_pos:(start_pos+Mb-1)) + log(fk);
         end
         
         if (k<d)
-            % Sample the k-th block onto xk
-            % Build the linear interpolant
-            fk = permute(f{k}, [1,3,2]);
-            fk = reshape(fk, rf(k)*rf(k+1), n(k));
-            % extrapolate fk to the leftmost point
-            C1 = (xsf(pos(k)+2)-xsf(pos(k)))/h{k}(2);
-            C2 = (xsf(pos(k))-xsf(pos(k)+1))/h{k}(2);
-            Ck = C1*fk(:,1) + C2*fk(:,2);
-            fk = [Ck, fk];
-            fk = reshape(fk, rf(k), rf(k+1), n(k)+1);
-            Aq = repmat(Aq, 1, rf(k+1));
-            Bq = repmat(Bq, 1, rf(k+1));
+            % Sample the k-th block onto xk via linear interpolation
             % On-the-fly product
             % fkm1(i,:)*fk(:,i0(i),:)*Aq(i) + fkm1(i,:)*fk(:,i0(i)+1,:)*Bq(i)
-            fkm1 = tracemult(fkm1, i0, fk).*Aq + tracemult(fkm1, i0+1, fk).*Bq;
+            fkm1 = reshape(fkm1, 1, rf(k), Mb);
+            Aq = reshape(Aq, 1, 1, Mb);
+            Bq = reshape(Bq, 1, 1, Mb);
+            fkm1 = tracemult(fkm1, i0, f{k}).*Aq + tracemult(fkm1, i0+1, f{k}).*Bq;
+            fkm1 = reshape(fkm1, rf(k+1), Mb);
         end
     end
 end

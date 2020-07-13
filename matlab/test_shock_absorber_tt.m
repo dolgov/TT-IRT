@@ -27,9 +27,9 @@ check_mcmc;
 params = parse_shock_inputs(varargin{:});
 % extra parameters for TT
 if (~isfield(params, 'n'))
-    params.n = input('Uniform grid size for the posterior n = ? (default 16): ');
+    params.n = input('Uniform grid size for the posterior n = ? (default 17): ');
     if (isempty(params.n))
-        params.n = 16;
+        params.n = 17;
     end
 end
 if (~isfield(params, 'delta'))
@@ -76,21 +76,22 @@ b = [b 13]';
 % Vectors of grid points
 theta = cell(params.D+2,1);
 for i=1:params.D+2
-    h = (b(i)-a(i))/params.n;
-    theta{i} = (a(i)+h:h:b(i))';
+    h = (b(i)-a(i))/(params.n-1);
+    theta{i} = (a(i):h:b(i))';
+    % For sampling tests
     theta{i} = tt_tensor(theta{i});
+    % QTT for asymptotic tests only
+%     theta{i} = tt_tensor(theta{i}, 1e-12, factor(params.n));
 end
 % Replicate those in all dimensions as TT tensors
-% These must be without boundary points
 theta_tt = tt_meshgrid_vert(theta);
-% Add boundary points for the Rosenblatt transform
+% Grid points for the Rosenblatt transform -- these must be full vectors
 for i=1:params.D+2
     theta{i} = full(theta{i});
-    theta{i} = [a(i); theta{i}];
 end
 
-% Exact posterior function
-pifun = @(theta)exp(shock_log_weibull(theta, params.x, y, censind) + shock_log_prior(theta, beta_mean, beta_var));
+% Exact log-posterior function
+lpifun = @(theta)(shock_log_weibull(theta, params.x, y, censind) + shock_log_prior(theta, beta_mean, beta_var));
 
 n_err_TT = round(params.runs/4); % number of runs used to estimate error in pi
 Pi = cell(1,n_err_TT); % storage for pi approximations from several runs
@@ -107,23 +108,29 @@ tauint_tt = zeros(params.runs, 1); % IACT (after MH)
 
 for irun=1:params.runs
     tic;
-    [pi,~,~,~,N_cross(irun,:)] = amen_cross_s(theta_tt, pifun, 0, 'kickrank', 2, 'y0', 8, 'tol_exit', params.delta);
+    % For asymptotic tests
+%     [pi,~,~,~,N_cross(irun,:)] = amen_cross_s(theta_tt, @(x)exp(lpifun(x)), 0, 'kickrank', 0.3, 'y0', 8, 'tol_exit', params.delta);
+    % For sampling tests
+    [pi,~,~,~,N_cross(irun,:)] = amen_cross_s(theta_tt, @(x)exp(lpifun(x)), 0, 'kickrank', 2, 'y0', 8, 'tol_exit', params.delta);
     ttimes_cross(irun) = toc;
-    pi = round(pi, 1e-6); % truncate some ranks we can
     if (irun<=n_err_TT)
         Pi{irun} = pi;
     end
 
-    [Z_mh,~,num_of_rejects(irun),ttimes_invcdf(irun)] = tt_irt_debias(2^params.log2N, pifun, pi, theta, 'mcmc');
+    % Reshape QTT back into TT if we had one
+    pi = tt_reshape(pi, params.n*ones(params.D+2,1));
+    
+    % Metropolis-Hastings MCMC
+    [Z_mh,~,num_of_rejects(irun),ttimes_invcdf(irun)] = tt_irt_debias(2^params.log2N, lpifun, pi, theta, 'mcmc', true);
     [Q_mh(irun,:)] = shock_quantiles(Z_mh, 0*ones(params.D,1));
 
     % Importance weighting with QMC
     Z_iw = qmcnodes(params.D+2, params.log2N)';
-    [Z_iw,pi_app] = tt_irt(theta,pi,Z_iw);
-    pi_ex = pifun(Z_iw);
-    Q_iw(irun,:) = shock_quantiles(Z_iw, 0*ones(params.D,1), pi_ex./pi_app);
+    [Z_iw,lpi_app] = tt_irt(theta,pi,Z_iw);
+    lpi_ex = lpifun(Z_iw);
+    Q_iw(irun,:) = shock_quantiles(Z_iw, 0*ones(params.D,1), exp(lpi_ex - lpi_app));
 
-    % Estimate autocorr time of Q1
+    % Estimate autocorr time of MCMC
     [~,~,~,tauint_tt(irun),~,~] = UWerr(Z_mh,1.5,length(Z_mh),0);
     tauint_tt(irun) = tauint_tt(irun)*2;    
 end

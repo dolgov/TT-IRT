@@ -14,16 +14,16 @@ def tt_irt1(q, f, xsf):
     """ Inverse Rosenblatt sampler, linear splines
         Inputs:
           q: seed samples from [0,1]^d (np.float64 M x d Fortran shaped)
-          f: tt.tensor of the PDF (dimension d), constructed on a grid without left boundaries
-          xsf: vector of grid points of all variables stacked together (np.float64, size sum(f.n+1))
+          f: tt.tensor of the PDF (dimension d), constructed on a grid specified in xsf
+          xsf: vector of grid points of all variables stacked together (np.float64, size sum(f.n))
         Returns:
           Z: transformed samples (np.float64 M x d Fortran shaped)
-          Pz: values of the sampling density at Z (np.float64 M x 1)
+          lPz: values of log(sampling density) at Z (np.float64 M x 1)
     """
     c_irt1 = lib.tt_irt1
     c_irt1.restype = None
     c_irt1.argtypes = [c_int, POINTER(c_int), POINTER(c_double), POINTER(c_int), POINTER(c_double), c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
-    #                  d           n              xsf              ttrank          ttcore            M           q                 Z                 Pz
+    #                  d           n              xsf              ttrank          ttcore            M           q                 Z                 lPz
 
     # Cores of f must be extracted carefully, since we might have discontinuous ps
     core = np.zeros((f.core).size, dtype=np.float64)
@@ -42,13 +42,13 @@ def tt_irt1(q, f, xsf):
     qp = q.ctypes.data_as(POINTER(c_double))
     
     Z = np.zeros([q.shape[0], q.shape[1]], dtype=np.float64, order='F')
-    Pz = np.zeros([q.shape[0]], dtype=np.float64, order='F')
+    lPz = np.zeros([q.shape[0]], dtype=np.float64, order='F')
 
     Zp = Z.ctypes.data_as(POINTER(c_double))
-    Pzp = Pz.ctypes.data_as(POINTER(c_double))
+    lPzp = lPz.ctypes.data_as(POINTER(c_double))
 
     # Sampler is actually here
-    c_irt1(d, n, xsfp, rf, corep, M, qp, Zp, Pzp)
+    c_irt1(d, n, xsfp, rf, corep, M, qp, Zp, lPzp)
 
-    return (Z, Pz)
+    return (Z, lPz)
     

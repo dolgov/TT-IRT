@@ -2,11 +2,11 @@
 #include "lapack.h"
 #include "blas.h"
 
-extern void tt_irt1(mwIndex d, mwIndex *n, double *xs, mwIndex *ttrank, double *ttcore, mwIndex M, double *q, double *z, double *Pz);
+extern void tt_irt1(mwIndex d, mwIndex *n, double *xs, mwIndex *ttrank, double *ttcore, mwIndex M, double *q, double *z, double *lPz);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
-/*  RHS: n(d x 1), xs(sum(n+1) x 1), ttrank(d+1 x 1), ttcore(sum(r*n*r) x 1), q(M x d)
- *  LHS: Z(M x d), Pz (M x 1)
+/*  RHS: n(d x 1), xs(sum(n) x 1), ttrank(d+1 x 1), ttcore(sum(r*n*r) x 1), q(M x d)
+ *  LHS: Z(M x d), lPz (M x 1)
  */
 {
   double *dtmp;

@@ -68,8 +68,8 @@ for i=1:M
     Fl(i) = -B(n);
 end
 
-% Likelihood
-L = exp(-L/(2*sigma_n));
+% log-likelihood
+L = -L/(2*sigma_n);
 
 IFL = double(Fl>1.5);
 

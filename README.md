@@ -1,9 +1,15 @@
 # TT-IRT
 Inverse Rosenblatt Transform (Conditional Distribution) + MCMC sampling using Tensor Train approximation
 
-Algorithms and running codes for the paper "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[arXiv:1810.01212](https://arxiv.org/abs/1810.01212)] by Sergey Dolgov, Karim Anaya-Izquierdo, Colin Fox and Robert Scheichl.
+Algorithms and running codes for the paper "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] by Sergey Dolgov, Karim Anaya-Izquierdo, Colin Fox and Robert Scheichl.
 
 The toolbox consists of **matlab** and **python** parts. Moreover, the conditional distribution sampler (TT-CD) is also implemented in C with two types of integers, `matlab/tt_irt1_int64.c` and `python/tt_irt_py/tt_irt1_int32.c` which can be linked into Matlab MEX, Python CTypes or other project.
+
+### Changelog
+
+ * `1.1` improved baseline version where logarithms of density functions are used to prevent overflows. Debiasing functions return more diagnostic information. Grid work is simplified such that the sets of grid points are the same for `tt_irt` and tt_tensors. New interface of `tracemult*`, MEX version can handle complex numbers. \
+ This is the version corresponding to the final published paper.
+ * `1.0` original version used for numerical experiments.
 
 ### Installation
 
@@ -45,7 +51,7 @@ All files for running experiments start with a `test_` prefix. Currently impleme
 
 Each test can be run without any arguments. In this case, they will be interactively asked from the user. For batch runs, parameters can be passed in pairs of inputs ``'param_name1'``, ``param_value1``, ``'param_name2'``, ``param_value2``, and so on. For example,
 ```
-test_shock_absorber_tt('D', 6, 'x', [], 'log2N', 14, 'delta', 0.05, 'n', 16, 'runs', 8)
+test_shock_absorber_tt('D', 6, 'x', [], 'log2N', 14, 'delta', 0.05, 'n', 17, 'runs', 8)
 ```
 will run the shock absorber test with all default parameters. Only a subset of arguments can be given, e.g.
 ```
@@ -63,7 +69,7 @@ Moreover, it will create all the variables in the main Matlab workspace, so they
 The parameters are set up statically in this file. In order to change them, go to lines 88-92 and edit
 ```
 d = 6       # number of covariates
-n = 16      # grid size
+n = 17      # grid size
 tol = 5e-2  # TT stopping threshold
 log2N = 16  # log2(number of samples)
 runs = 8    # number of runs

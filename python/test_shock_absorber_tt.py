@@ -90,7 +90,7 @@ def crossfun(ind, theta, x, y, censind, beta_mean, beta_var):
 ###################### MAIN ###############
 
 d = 6       # number of covariates
-n = 16      # grid size
+n = 17      # grid size
 tol = 5e-2  # TT stopping threshold
 log2N = 16  # log2(number of samples)
 runs = 8    # number of runs
@@ -116,17 +116,15 @@ b = np.hstack([b, 13.0])
 theta = (d+2)*[None]
 theta_f = (d+2)*[None]
 for i in range(0,d+2):
-    h = (b[i]-a[i])/n
-    theta[i] = a[i]+np.arange(1,n+1)*h
-    theta_f[i] = a[i]+np.arange(0,n+1)*h
-    theta_f[i] = np.reshape(theta_f[i], [n+1, 1], order='F')
+    h = (b[i]-a[i])/(n-1)
+    theta[i] = a[i]+np.arange(0,n)*h
+    theta_f[i] = np.reshape(theta[i], [n, 1], order='F')
 
 theta_f = np.hstack(theta_f)
-theta_f = np.reshape(theta_f, [(d+2)*(n+1), 1], order='F')
+theta_f = np.reshape(theta_f, [(d+2)*n, 1], order='F')
 
 # Simulate artificial covariates
-#x = np.random.randn(d*np.size(y))/d;
-x = np.ones(d*np.size(y))/d
+x = np.random.randn(d*np.size(y))/d;
 x = np.reshape(x, [d, np.size(y)], order='F')
 
 # short index function for cross
@@ -152,24 +150,24 @@ for irun in range(0,runs):
 
     ttt = time.time()
     # Sample
-    Z, Pz = tt_irt1(q, f, theta_f)
+    Z, lPz = tt_irt1(q, f, theta_f)
     ttimes_invcdf = time.time() - ttt
     print('Sampling time = '+repr(ttimes_invcdf))
 
     Z = np.reshape(Z, [M,d+2], order='F') # Proposed samples
-    Pz = np.reshape(Pz, [M,1], order='F') # Approximate density
+    lPz = np.reshape(lPz, [M,1], order='F') # Approximate log(density)
 
-    # Exact density
-    Pex = np.exp(logL_weibull(Z, x, y, censind) + logf_prior(Z, beta_mean, beta_var))
+    # Exact log(density)
+    lPex = logL_weibull(Z, x, y, censind) + logf_prior(Z, beta_mean, beta_var)
 
     # MCMC rejections
     num_of_rejects = 0
     for i in range(0,M-1):
-        alpha = np.exp(np.log(Pex[i+1]) - np.log(Pex[i]) + np.log(Pz[i]) - np.log(Pz[i+1]))
+        alpha = np.exp(lPex[i+1] - lPex[i] + lPz[i] - lPz[i+1])
         if alpha<np.random.random(1): # reject
             Z[i+1,:] = Z[i,:]
-            Pex[i+1] = Pex[i]
-            Pz[i+1] = Pz[i]
+            lPex[i+1] = lPex[i]
+            lPz[i+1] = lPz[i]
             num_of_rejects = num_of_rejects + 1
 
     print('rejection rate = ' + repr((num_of_rejects*100.0)/M))

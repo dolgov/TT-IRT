@@ -63,7 +63,7 @@ phil = full(phi*spdiags(sqrt(lambda), 0, L, L));
 
 % Anisotripic grid in parameters
 ni = log(lambda);
-ni = round(params.ny + (1-params.ny)*(ni/ni(L)));
+ni = round(params.ny + (2-params.ny)*(ni/ni(L)));
 
 Y = cell(L,1);
 for i=1:L
@@ -130,13 +130,12 @@ else
 end
 
 % Interpolate from lgwt to uniform
-ys = 2*sqrt(3)/params.npi;
-ys = (-sqrt(3)+ys:ys:sqrt(3))';
+ys = 2*sqrt(3)/(params.npi-1);
+ys = (-sqrt(3):ys:sqrt(3))';
 ys = repmat({ys}, L, 1);
 P_lgwt_uni = cell(L,1);
 for i=1:L
     P_lgwt_uni{i} = reshape(lagrange_interpolant(Y{i}, ys{i}), 1, params.npi, ni(i));
-    ys{i} = [-sqrt(3); ys{i}]; % left boundary is needed for IRT
 end
 P_lgwt_uni = cell2core(tt_matrix, P_lgwt_uni);
 
@@ -166,6 +165,8 @@ for irun=1:params.runs
     % TT-MH or TT-IW algorithms
     if (strcmpi(params.correction, 'mcmc'))
         Z = rand(2^params.log2N, L);
+%     elseif (strcmpi(params.correction, 'iw2'))
+%         Z = HOscrambleSobol(params.log2N, L, 2);
     else
         Z = qmcnodes(L, params.log2N)';
     end
@@ -173,6 +174,7 @@ for irun=1:params.runs
     [y,Fex,bias(irun),ttimes_invcdf(irun)] = tt_irt_debias(Z, @(y)diffusion_likelihood(y, phil, params.sigma, bound, W1g, W1m, spind, Mass, Q_obs, params.sigma_n), pi, ys, params.correction);
     ttimes_debias(irun) = toc;
     
+    % Quantity of interest
     Q_tt(irun,:) = mean(Fex(:,2:3));
     
     % Estimate IACT
