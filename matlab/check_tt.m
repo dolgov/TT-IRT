@@ -4,11 +4,13 @@ if (exist('tt_tensor', 'file')==0)
         if (exist('TT-Toolbox-small.zip', 'file')==0)
             try
                 fprintf('TT-Toolbox is not found, downloading...\n');
-                urlwrite('https://github.com/oseledets/TT-Toolbox/archive/small.zip', 'TT-Toolbox-small.zip');
+                opts = weboptions; opts.CertificateFilename=(''); % SUXX
+                websave('TT-Toolbox-small.zip', 'https://github.com/oseledets/TT-Toolbox/archive/small.zip', opts);
             catch ME
                 warning(ME.identifier, '%s. Automatic download from github failed. Trying my website...', ME.message);
                 try
-                    urlwrite('http://people.bath.ac.uk/sd901/als-cross-algorithm/ttsmall.zip', 'TT-Toolbox-small.zip');
+                    opts = weboptions; opts.CertificateFilename=(''); % SUXX
+                    websave('TT-Toolbox-small.zip', 'https://people.bath.ac.uk/sd901/als-cross-algorithm/ttsmall.zip', opts);
                 catch ME2
                     error('%s. Automatic download failed. Please download TT-Toolbox from https://github.com/oseledets/TT-Toolbox', ME2.message);
                 end
