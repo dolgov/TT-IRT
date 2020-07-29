@@ -1,5 +1,9 @@
 function check_mcmc()
-if (exist('dramrun', 'file')==0)
+cd(fileparts(mfilename('fullpath')));
+cd('..'); % TT-IRT root
+cd('samplers')
+
+if (exist('dramrun', 'file')==0)    
     if (exist('dramcode', 'dir')==0)
         if (exist('dramcode.zip', 'file')==0)
             try
@@ -26,7 +30,7 @@ if (exist('dramrun', 'file')==0)
     end
     cd('dramcode')
     addpath(pwd)
-    cd('..')
+    cd('..') % samplers
 end
 
 if (exist('UWerr', 'file')==0)
@@ -39,5 +43,7 @@ if (exist('UWerr', 'file')==0)
     end
     fprintf('Success!\n');
 end
+
+cd('..'); % TT-IRT root
 end
 

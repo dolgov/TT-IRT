@@ -24,6 +24,8 @@
 %               number of consequitive rejections
 %          if correction=='iw', this is the maximal importance ratio
 %   err1: [if correction=='iw' only!] empirical L1-error <|Fex-Fapp|>
+%
+% See also: iw_prune, mcmc_prune, essinv, tt_irt_lin
 
 function [y,lFex,bias,time_invcdf,worst,err1] = tt_irt_debias(M, lFfun, f, xsf, correction, vec)
 d = f.d;
@@ -43,7 +45,7 @@ end
 
 % Propose IRT samples
 t_mcmc = tic;
-[y,lFapp] = tt_irt(xsf, f, Z);
+[y,lFapp] = tt_irt_lin(xsf, f, Z);
 time_invcdf = toc(t_mcmc);
 fprintf('invcdf time = %g\n', time_invcdf);
 

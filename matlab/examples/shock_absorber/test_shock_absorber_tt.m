@@ -20,9 +20,16 @@
 %   err_TT: estimate of the TT approximation error (empirical std)
 function test_shock_absorber_tt(varargin)
 % Check prerequisites
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
 check_tt;
 check_qmc;
 check_mcmc;
+cd(mydir);
 
 params = parse_shock_inputs(varargin{:});
 % extra parameters for TT
@@ -126,7 +133,7 @@ for irun=1:params.runs
 
     % Importance weighting with QMC
     Z_iw = qmcnodes(params.D+2, params.log2N)';
-    [Z_iw,lpi_app] = tt_irt(theta,pi,Z_iw);
+    [Z_iw,lpi_app] = tt_irt_lin(theta,pi,Z_iw);
     lpi_ex = lpifun(Z_iw);
     Q_iw(irun,:) = shock_quantiles(Z_iw, 0*ones(params.D,1), exp(lpi_ex - lpi_app));
 

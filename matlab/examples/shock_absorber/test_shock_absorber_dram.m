@@ -14,7 +14,14 @@
 %   tauint_dram = zeros(nruns, 1): IACT
 function test_shock_absorber_dram(varargin)
 % Check prerequisites
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
 check_mcmc;
+cd(mydir);
 
 params = parse_shock_inputs(varargin{:});
 

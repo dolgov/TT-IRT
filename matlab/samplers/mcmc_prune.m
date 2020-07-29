@@ -11,6 +11,8 @@
 %   num_of_rejects: total number of rejections
 %   rej_distribution: unnormalised distribution function of the number of
 %       consequitive rejections, i.e. rej_distribution(L) ~ Prob(lag==L)
+%
+% See also: iw_prune, essinv, tt_irt_debias
 
 function [y,lFex,lFapp,num_of_rejects, rej_distribution]=mcmc_prune(y,lFex,lFapp)
 

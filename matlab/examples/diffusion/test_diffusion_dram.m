@@ -1,10 +1,21 @@
 % DRAM Inverse Diffusion test
 function test_diffusion_dram(varargin)
 % Download DRAM if necessary
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
 check_mcmc;
+cd(mydir);
 
 % Parse parameters or ask a user for them
 params = parse_diffusion_inputs(varargin{:});
+
+if (2^params.log2N<=6000)
+    error('A minimum of 6000 samples are needed for burn-in');
+end
 
 % A priori fitted function to map spatial meshlevel into space discr. error
 htolfun = @(x)(7.6742e-03*4^(-x-1)); % For the flux in the inverse problem

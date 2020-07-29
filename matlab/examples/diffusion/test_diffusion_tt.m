@@ -1,7 +1,14 @@
 % TT-IRT Inverse Diffusion test
 function test_diffusion_tt(varargin)
 % Check for and download TT-Toolbox
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
 check_tt;
+cd(mydir);
 
 % Parse parameters or ask a user for them
 params = parse_diffusion_inputs(varargin{:});
@@ -10,6 +17,12 @@ if (~isfield(params, 'ny'))
     params.ny = input('Gauss grid size for the forward map ny = ? (default 7): ');
     if (isempty(params.ny))
         params.ny = 7;
+    end
+end
+if (~isfield(params, 'rmax'))
+    params.rmax = input('Max TT rank rmax = ? (default 800): ');
+    if (isempty(params.rmax))
+        params.rmax = 800;
     end
 end
 if (~isfield(params, 'npi'))
@@ -24,12 +37,6 @@ if (~isfield(params, 'delta'))
         params.delta = 0.1;
     end
 end
-if (~isfield(params, 'rmax'))
-    params.rmax = input('Max TT rank rmax = ? (default 800): ');
-    if (isempty(params.rmax))
-        params.rmax = 800;
-    end
-end
 if (~isfield(params, 'correction'))
     params.correction = input('Algorithm of debiasing correction = ? (''mcmc'' or ''iw'') (default ''mcmc''): ');
     if (isempty(params.correction))
@@ -40,9 +47,11 @@ end
 if (strcmpi(params.correction, 'mcmc'))
     % We need DRAM and UWerr
     check_mcmc;
+    cd(mydir);
 else
     % We need QMC generating vector
     check_qmc;
+    cd(mydir);
 end
 
 % A priori fitted function to map spatial meshlevel into space discr. error

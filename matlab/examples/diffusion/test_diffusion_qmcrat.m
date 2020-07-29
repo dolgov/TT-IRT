@@ -1,8 +1,15 @@
 % Bayesian ratio + QMC Inverse Diffusion test
 function test_diffusion_qmcrat(varargin)
 % Download prerequisites if necessary
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
 check_mcmc;
 check_qmc;
+cd(mydir);
 
 % Parse parameters or ask a user for them
 params = parse_diffusion_inputs(varargin{:});

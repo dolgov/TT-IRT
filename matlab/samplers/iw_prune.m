@@ -10,6 +10,8 @@
 %          Fex/Fapp = (1/Z)exp(lFex-lFapp), where Z is normalising constant
 %   max_ratio: maximum of the ratio Fex/Fapp
 %   err1: empirical L1-error, err1 = <|Fex - Fapp|>
+%
+% See also: mcmc_prune, essinv, tt_irt_debias
 
 function [lFex,isstd,max_ratio,err1]=iw_prune(lFex,lFapp)
 

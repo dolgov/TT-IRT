@@ -1,5 +1,9 @@
 % Check/download lattice vector
 function check_qmc()
+cd(fileparts(mfilename('fullpath')));
+cd('..'); % TT-IRT root
+cd('samplers')
+
 if (exist('lattice-39102-1024-1048576.3600.txt', 'file')==0)
     try
         fprintf('lattice-39102-1024-1048576.3600.txt is not found, downloading...\n');
@@ -10,4 +14,6 @@ if (exist('lattice-39102-1024-1048576.3600.txt', 'file')==0)
     end
     fprintf('Success!\n');
 end
+
+cd('..'); % TT-IRT root
 end

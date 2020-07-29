@@ -25,12 +25,6 @@ end
 % Only uniform distribution here
 check_lgwt; 
 
-if (~isfield(params, 'runs'))
-    params.runs = input('Number of test runs = ? (default 8): ');
-    if (isempty(params.runs))
-        params.runs = 8;
-    end
-end
 if (~isfield(params, 'meshlevel'))
     params.meshlevel = input('Spatial meshlevel = ? ("1" <=> h=1/32) (default 2): ');
     if (isempty(params.meshlevel))
@@ -38,6 +32,7 @@ if (~isfield(params, 'meshlevel'))
     end
 end
 
+% Here the inverse problem starts
 if (~isfield(params, 'sigma_n'))
     params.sigma_n = input('Noise variance sigma_n = ? (default 1e-2): ');
     if (isempty(params.sigma_n))
@@ -61,6 +56,13 @@ if (~isfield(params, 'log2N'))
     params.log2N = input('log2(number of samples in the chain) log2N = ? (default 14): ');
     if (isempty(params.log2N))
         params.log2N = 14;
+    end
+end
+
+if (~isfield(params, 'runs'))
+    params.runs = input('Number of test runs = ? (default 8): ');
+    if (isempty(params.runs))
+        params.runs = 8;
     end
 end
 

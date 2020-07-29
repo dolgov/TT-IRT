@@ -1,4 +1,7 @@
 function check_tt()
+cd(fileparts(mfilename('fullpath')));
+cd('..'); % TT-IRT root
+
 if (exist('tt_tensor', 'file')==0)
     if (exist('TT-Toolbox-small', 'dir')==0)
         if (exist('TT-Toolbox-small.zip', 'file')==0)

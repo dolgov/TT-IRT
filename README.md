@@ -1,30 +1,29 @@
 # TT-IRT
-Inverse Rosenblatt Transform (Conditional Distribution) + MCMC sampling using Tensor Train approximation
+Inverse Rosenblatt Transports (IRT) + MCMC sampling using Tensor Train (TT) approximation
 
-Algorithms and running codes for the paper "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] by Sergey Dolgov, Karim Anaya-Izquierdo, Colin Fox and Robert Scheichl.
+Algorithms and examples are described in "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] and "Deep Composition of Tensor Trains using Squared Inverse Rosenblatt Transports" [[arXiv:2007.06968](https://arxiv.org/abs/2007.06968)].
 
-The toolbox consists of **matlab** and **python** parts. Moreover, the conditional distribution sampler (TT-CD) is also implemented in C with two types of integers, `matlab/tt_irt1_int64.c` and `python/tt_irt_py/tt_irt1_int32.c` which can be linked into Matlab MEX, Python CTypes or other project.
+The toolbox consists of **matlab** and **python** parts. Moreover, the inverse Rosenblatt transform based on linear splines is also implemented in C with two types of integers, `matlab/utils/tt_irt1_int64.c` and `python/tt_irt_py/tt_irt1_int32.c` which can be linked into Matlab MEX, Python CTypes or other project.
 
 ### Changelog
 
- * `1.1` improved baseline version where logarithms of density functions are used to prevent overflows. Debiasing functions return more diagnostic information. Grid work is simplified such that the sets of grid points are the same for `tt_irt` and tt_tensors. New interface of `tracemult*`, MEX version can handle complex numbers. \
- This is the version corresponding to the final published paper.
- * `1.0` original version used for numerical experiments.
+ * `2.0` Squared (SIRT) and Deep (DIRT) Inverse Rosenblatt Transports [[arXiv:2007.06968](https://arxiv.org/abs/2007.06968)]. Functions are structured in directories. New `predator_prey` and `lorenz` examples for DIRT.
+ * `1.1` improved baseline version where logarithms of density functions are used to prevent overflows. Debiasing functions return more diagnostic information. Grid work is simplified such that the sets of grid points are the same for `tt_irt` and tt_tensors. New interface of `tracemult*`, MEX version can handle complex numbers.
+ * `1.0` original version used for numerical experiments in the [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] paper.
 
 ### Installation
 
 The package is based on several projects: Tensor Train (TT) algorithms are implemented in [TT-Toolbox](https://github.com/oseledets/TT-Toolbox) (Matlab) and [ttpy](https://github.com/oseledets/ttpy) (python), the QMC lattice is produced using a generating vector from [F. Kuo website](http://web.maths.unsw.edu.au/~fkuo/lattice/index.html), and the integrated autocorrelation time (IACT) is estimated by [UWerr.m](https://www.physik.hu-berlin.de/de/com/ALPHAsoft) / [puwr.py](https://github.com/dhesse/py-uwerr).
-The TT algorithms can be compared to [Delayed Rejection Adaptive Metropolis (DRAM)](http://helios.fmi.fi/~lainema/dram/) MCMC.
+The TT algorithms can be compared to [Delayed Rejection Adaptive Metropolis (DRAM)](http://helios.fmi.fi/~lainema/dram/) MCMC and [Stein variational Newton (SVN)](https://github.com/gianlucadetommaso/Stein-variational-samplers).
 Installation steps are thus different in **matlab** and **python**.
 
 **matlab/**
 
-After changing to `matlab/` directory, the general configuration script `install` can be run in order to compile MEX files.
+After changing to `matlab/` directory, the general configuration script `install` can be run in order to add subdirectories to the Matlab path, to test and to compile MEX files.
 Moreover, this script will ask you whether the parallel *for* loops should be used for different runs of the tests.
 
-External packages are downloaded automatically by `check_tt`, `check_mcmc` and `check_qmc` scripts when the corresponding test is run. Should the automated download fail, the scripts will tell you where you can get the necessary prerequisite manually.
-Subdirectories of the external codes will be added to Matlab path.
-However, the current `matlab/` directory contains all TT-IRT files and hence you don't need to have it in the path.
+External packages are downloaded automatically by `check_tt`, `check_mcmc` and `check_qmc` scripts in the `utils/` directory when the corresponding test is run. Should the automated download fail, the scripts will tell you where you can get the necessary prerequisite manually.
+To simply add all subdirectories of TT-IRT to the path, you can run `utils/check_ttirt` script.
 
 
 **python/**
@@ -37,17 +36,27 @@ python setup.py install [--user]
 ```
 The installation can be checked by `verify.py` script. It will also try to download `puwr.py` for the IACT estimation.
 
+>Warning: the Python module is significantly behind the Matlab version. In particular, SIRT and DIRT are implemented only in Matlab.
 
 ### Scripts for running examples
 
-All files for running experiments start with a `test_` prefix. Currently implemented are the shock absorber and the diffusion equation examples.
+All files for running experiments start with a `test_` prefix. You may click on each item to open an individual directory or file.
 
-**matlab/**
- * `test_shock_absorber_tt.m`       Shock absorber test with TT-MH and TT-qIW methods
- * `test_shock_absorber_dram.m`     Shock absorber test with DRAM
- * `test_diffusion_tt.m`            Inverse diffusion test with TT-MH/TT-qIW
- * `test_diffusion_dram.m`          Inverse diffusion test with DRAM
- * `test_diffusion_qmcrat.m`        Inverse diffusion test with QMC ratio estimator
+**matlab/examples**
+ * [`shock_absorber/`](https://github.com/dolgov/TT-IRT/tree/master/matlab/examples/shock_absorber)                   Shock absorber reliability example
+   - `test_shock_absorber_tt.m`        TT-MH and TT-qIW methods (single-level)
+   - `test_shock_absorber_dram.m`      DRAM test
+ * [`diffusion/`](https://github.com/dolgov/TT-IRT/tree/master/matlab/examples/diffusion)                        Inverse diffusion example
+   - `test_diffusion_tt.m`             TT-MH/TT-qIW test
+   - `test_diffusion_dirt.m`           DIRT test
+   - `test_diffusion_dram.m`           DRAM test
+   - `test_diffusion_qmcrat.m`         QMC ratio test
+ * [`predator_prey/`](https://github.com/dolgov/TT-IRT/tree/master/matlab/examples/predator_prey)                    Example of calibration of the Predator-prey model
+   - `test_predator_prey_dirt.m`       DIRT test
+   - `test_predator_prey_dram.m`       DRAM test
+   - `test_predator_prey_svn.m`        SVN test
+ * [`lorenz/`](https://github.com/dolgov/TT-IRT/tree/master/matlab/examples/lorenz)                           A Lorenz-40 identification example
+   - `test_lorenz.m`                   DIRT test
 
 Each test can be run without any arguments. In this case, they will be interactively asked from the user. For batch runs, parameters can be passed in pairs of inputs ``'param_name1'``, ``param_value1``, ``'param_name2'``, ``param_value2``, and so on. For example,
 ```
@@ -64,9 +73,16 @@ Moreover, it will create all the variables in the main Matlab workspace, so they
 
 
 **python/**
- * `test_shock_absorber_tt.py`      Shock absorber test with TT-MH
+ * Shock absorber example
+   - `test_shock_absorber_tt.py` Script for running the shock absorber test with TT-MH, encapsulates prior and likelihood functions
+ * Core package in `tt_irt_py` directory
+   - `tt_irt1_int32.c`  TT-CD sampler from an approximate density in TT format (uses 32-bit integers)
+   - `tt_irt.py`        CTypes wrapper
+   - `setup.py`         Compilation and installation script
+ * *Utilities*
+   - `verify.py`        Check availability of ttpy and tt_irt, download puwr.py
 
-The parameters are set up statically in this file. In order to change them, go to lines 88-92 and edit
+In the shock absorber example, the parameters are set up statically in the `test_shock_absorber_tt.py` file. In order to change them, go to lines 92-96 and edit
 ```
 d = 6       # number of covariates
 n = 17      # grid size
@@ -76,53 +92,21 @@ runs = 8    # number of runs
 ```
 
 
-### Function files
+### Structure of the Matlab repository
 
-Each function file contains an extended description. See e.g.
+Click on each item to see a Readme for that individual directory and files therein.
+
+ * [`constructors`](https://github.com/dolgov/TT-IRT/tree/master/matlab/constructors)   Functions for constructing TT decompositions using cross interpolation and DIRT.
+ * [`examples`](https://github.com/dolgov/TT-IRT/tree/master/matlab/examples)       Scripts and auxiliary functions for running numerical experiments.
+ * [`samplers`](https://github.com/dolgov/TT-IRT/tree/master/matlab/samplers)       Functions to produce samples. These include Rosenblatt transforms, MC, QMC and MCMC samplers.
+ * [`utils`](https://github.com/dolgov/TT-IRT/tree/master/matlab/utils)          Helper functions including interpolations, MEX files and installation checkers.
+
+
+### Further docs
+
+Navigate into leaf directories to see their individual README files.
+In addition, each function file contains an extended description. See e.g.
 ```
-help('tt_irt')
+help('tt_irt_sqr')
 ```
 or open the file in the editor.
-
-**matlab/**
-  * *Core*
-    - `tt_irt.m`  TT-CD sampler from an approximate density in TT format
-    - `tt_irt_debias.m`  MCMC and Importance Weighting (IW) correction of the TT-CD samples
-    - `mcmc_prune.m`     Metropolis-Hastings rejection algorithm (assumes independent proposals)
-    - `iw_prune.m`       Importance Weighting correction method
-    - `amen_cross_s.m`   Enhanced TT-Cross algorithm for the TT approximation
-    - `lagrange_interpolant.m`  Lagrange interpolation between two sets of points
-    - `tt_sample_lagr.m`  Lagrange interpolation of a TT decomposition
-    - `tracemultm.m`     Auxiliary file for conditioning of TT blocks in TT-CD (+ faster MEX version `tracemult.c`)
-    - `tt_irt_mex.c`     Faster MEX version of the TT-CD sampler (uses `tt_irt1_int64.c`)
-    - `qmcnodes.m`       Produces a QMC lattice on [0,1]^d
-  * *Shock absorber example*
-    - `parse_shock_inputs.m`    A function for requesting/extracting model parameters
-    - `shock_log_prior.m`       Log-prior (s-Normal-Gamma) function
-    - `shock_log_weibull.m`     Log-likelihood (censored Weibull) function
-    - `shock_quantiles.m`       A function for computing posterior quantiles
-    - `shock-xdata-d6.dat`      6-dimensional covariates data used in the paper (for reproducing the experiments)
-  * *Inverse diffusion example*
-    - `parse_diffusion_inputs.m`    A function for requesting/extracting model parameters
-    - `als_cross_parametric.m`      ALS-Cross algorithm for the parametrized PDE solution, see [http://people.bath.ac.uk/sd901/als-cross-algorithm/](http://people.bath.ac.uk/sd901/als-cross-algorithm/)
-    - `build_grid_and_kle.m`        Discretization of the diffusion equation
-    - `diffusion_assem_solve.m`     Solution of the diffusion equation (for ALS-Cross)
-    - `diffusion_likelihood.m`      Computation of the likelihood (solves the PDE for each sample)
-    - `project_blockdiag_mex.c`     Faster MEX version of the reduction step in ALS-Cross.
-    - `solve_blockdiag_mex.c`       Faster MEX version of the local solver in ALS-Cross.
-  * *Utilities*
-    - `check_mcmc.m`   Check/download/add-to-path for DRAM and UWerr
-    - `check_tt.m`     Check/download/add-to-path for TT-Toolbox
-    - `check_qmc.m`    Check/download for the QMC lattice generating vector
-    - `install.m`      Compile MEX files, switch between sequential and parallel for loops.
-
-**python/**
-  * Core package in `tt_irt_py` directory
-    - `tt_irt1_int32.c`  TT-CD sampler from an approximate density in TT format (uses 32-bit integers)
-    - `tt_irt.py`        CTypes wrapper
-    - `setup.py`         Compilation and installation script
-  * *Shock absorber example*
-    - `test_shock_absorber_tt.py`  Run script, encapsulates prior and likelihood functions
-  * *Utilities*
-    - `verify.py`        Check availability of ttpy and tt_irt, download puwr.py
-
