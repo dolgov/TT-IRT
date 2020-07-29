@@ -25,6 +25,17 @@
 %   lFex: log(exact density) values (before rejection)
 %
 function test_lorenz(varargin)
+% Check prerequisites
+mydir = fileparts(mfilename('fullpath'));
+try
+    check_ttirt;
+catch
+    cd(mydir); cd('..'); cd('..'); cd('utils'); check_ttirt;
+end
+check_tt;
+check_mcmc;
+cd(mydir);
+
 % Parse model parameters
 params = struct;
 for i=1:2:numel(varargin)

@@ -45,3 +45,5 @@ See the main [README](https://github.com/dolgov/TT-IRT/blob/master/README.md) fo
  * `dramcode` Delayed Rejection Adaptive Metropolis (DRAM) code (for DRAM experiments)
  * `lattice-39102-1024-1048576.3600.txt` A generating vector for the QMC lattice produced by `qmcnodes`
  * `UWerr.m` Integrated autocorrelation time (IACT) estimator as described in [[Ulli Wolff, *Monte Carlo errors with less errors*, CPC 156(2)](https://doi.org/10.1016/S0010-4655(03)00467-3)]
+ * `Stein-variational-samplers-master` Stein variational methods (in particular the SVN)
+
