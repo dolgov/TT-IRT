@@ -50,8 +50,9 @@ for j=nlvl:-1:1
     end
     lFapp = lFapp + dlFapp; % Add log(Jacobian)
     if (IRTstruct.reference(1)~='u')
-        % Add log(reference density). Ignore additive const log(cdf_factor)
-        lFapp = lFapp + sum(z.^2,2)/2;
+        % Subtract log(reference density)
+        lFapp = lFapp + sum(z.^2,2)/2 - log(2*cdf_factor^2/pi)*size(z,2)/2;
+        % It might be useful to get the normalising constant correct
     end
 end
 

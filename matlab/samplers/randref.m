@@ -4,13 +4,20 @@
 %   reference: reference density (['UNIform'], 'Normal' or 'Normal S',
 %              where S is the number of sigmas defining the [-S,S] support
 %              of the reference variables. S=4 if absent)
-%   sizes: arbitrary combination of array sizes compatible with rand
+%   sizes: arbitrary combination of array sizes compatible with rand.
+%          Alternatively, you can pass an array of numbers in [0,1] 
+%          (e.g. QMC lattice points) that will be transformed to reference.
 % Outputs:
 %   y: array of samples
 function [y] = randref(reference, varargin)
 
-% Uniform
-y = rand(varargin{:});
+if (isscalar(varargin{1}))
+    % varargin contains sizes, sample corresponding Uniform
+    y = rand(varargin{:});
+else
+    % These are some samples on [0,1] -- could be QMC
+    y = varargin{1};
+end
     
 if (lower(reference(1))~='u')
     % Truncated normal
