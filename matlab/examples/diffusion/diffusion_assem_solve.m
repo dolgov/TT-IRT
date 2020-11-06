@@ -41,7 +41,10 @@ for i=1:I
     B = W1g*B*W1m' + W1m*B*W1g';
     B = sparse(double(spind(:,1)),double(spind(:,2)),B(spind(:,3)),n^2,n^2); % permute
     if (num_coeffs>1)
-        g = rhs(:,i);
+        g = reshape(rhs(:,i), n, n);
+        localMass = reshape(W1m*sparse(ones(n,1)), n, n);
+        g = localMass*g*localMass';
+        g = reshape(g, n^2, 1);
     else
         % Eliminate the BC to the RHS
         bound_l = bound(1:numel(bound)/2);

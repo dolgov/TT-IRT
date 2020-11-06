@@ -164,7 +164,7 @@ for i_block=1:num_blocks
     Mb = numel(rerange{i_block});
     fkm1 = ones(1, Mb); % This will store conditioned left TT blocks f^{(<k)}(x_{<k}^*)
     
-    for k=1:d
+    for k=1:min(d,size(q,2))    % Simple trick to sample marginal if needed
         %%% Prepare 1D PDF and CDF
         fkm1 = reshape(fkm1, rf(k), 1, Mb);
         % Square conditioned \pi^{(<k)}(x_1...x_{k-1})
