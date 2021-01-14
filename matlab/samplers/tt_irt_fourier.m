@@ -16,6 +16,11 @@ function [xq, lFapp]=tt_irt_fourier(xsf, f, q)
 %
 % See also: tt_irt_lin, tt_irt_sqr
 
+
+newton_iter_max = 16;       % Those should be OK for most purposes
+newton_resid_tol = 1e-7;
+
+
 if (isa(f, 'tt_tensor'))
     f = core2cell(f);
 end
@@ -235,12 +240,15 @@ for i_block=1:num_blocks
         xk(ind_missed) = x1(ind_missed) + (qk(ind_missed)-C1(ind_missed))./f1(ind_missed);
         ind_missed = find((f1==0)&(Aq==0));
         xk(ind_missed) = x1(ind_missed);
-        
-        % Newton search for the exact root               
+        % Restrict the points to the current interval exactly
+        xk = max(xk, -S(k));
+        xk = min(xk,  S(k));
+
+        % Newton search for the exact root
         x_active = reshape(xk, 1, 1, Mb);
         active_pos = 1:Mb;
         Jac_all = ones(Mb,1); % storage for Jacobians
-        for iter=1:16
+        for iter=1:newton_iter_max
             % Fourier transform into unstructured points must be done explicitly
             iF = exp(ifreq.*x_active);
             Jac = tracemult(iF, 1:numel(x_active), fk);
@@ -249,7 +257,7 @@ for i_block=1:num_blocks
             Resid = real(Resid) + Ak.*x_active + Bk - qk;
             xk(active_pos) = x_active;
             Jac_all(active_pos) = Jac;
-            active_ind = abs(Resid)>1e-7; % Release already converged points
+            active_ind = abs(Resid)>newton_resid_tol; % Release already converged points
             x_active = x_active(active_ind);
 %             fprintf('iter=%d, xq(1)=%g, max(Resid)=%3.3e\n', iter, xk(1), max(abs(Resid)));
             if (isempty(x_active))
@@ -265,10 +273,11 @@ for i_block=1:num_blocks
             active_pos = active_pos(active_ind);
             % Stabilized Newton since Jac can be <<|Resid| on tails
             x_active = x_active - Resid./(Jac+abs(Resid));
+            % Restrict the points to the current interval exactly
             x_active = max(x_active, -S(k));
             x_active = min(x_active,  S(k));
-        end        
-
+        end
+        
         % Record the roots into global storage
         xq{i_block}(:, k) = X0(k) + xk;
         
