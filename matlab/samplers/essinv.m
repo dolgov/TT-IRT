@@ -10,6 +10,6 @@
 
 function [tau] = essinv(lFex,lFapp)
 dF = lFex - lFapp;
-dF = dF - mean(dF);
+dF = dF - max(dF);
 tau = numel(lFapp)*sum(exp(dF*2))/sum(exp(dF))^2;
 end
