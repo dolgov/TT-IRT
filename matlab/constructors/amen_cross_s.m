@@ -294,6 +294,7 @@ elseif isa(y,'tt_tensor')
         end
         i = i+dir;
     end
+    ry(1) = 1; ry(d+1) = 1; % those might be different if a block tensor is given
 else
     % Initial guess is a set of nested indices
     Jy = y;
@@ -466,7 +467,7 @@ while (swp<=nswp)
     end
     
     % Estimate the error -- now in C-norm
-    if (isempty(y{i}))
+    if (isempty(y{i})) || ((swp==1)&&(i==istart)&&(b>1))
         y{i} = zeros(ry(i)*n(i)*ry(i+1)*b, 1);
     end
     y{i} = reshape(y{i}, ry(i)*n(i)*ry(i+1)*b, 1);
