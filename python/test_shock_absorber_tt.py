@@ -179,7 +179,7 @@ for irun in range(0,runs):
     q_post = theta1*((-np.log(q))**(1.0/theta2))
     # IACT -- only works in python 2.7 due to bad print
     try:
-        dumpmean, delta, tint, d_tint = puwr.tauint(np.reshape(q_post, [1, 1, M]), 0)
+        dumpmean, delta, tint, d_tint = puwr.tauint(np.reshape(Z.T, [d+2, 1, M]), 0)
         tau[irun] = tint*2.0
     except:
         pass
