@@ -1,9 +1,13 @@
-function check_mcmc()
+function check_mcmc(need_dram)
 cd(fileparts(mfilename('fullpath')));
 cd('..'); % TT-IRT root
 cd('samplers')
 
-if (exist('dramrun', 'file')==0)    
+if (nargin<1)
+    need_dram = true;
+end
+
+if ((exist('dramrun', 'file')==0)&&(need_dram))
     if (exist('dramcode', 'dir')==0)
         if (exist('dramcode.zip', 'file')==0)
             try
