@@ -2,7 +2,8 @@ function [IRTstruct] = tt_dirt_approx(x0, logpostfun, beta, varargin)
 % The constructor of the Deep Inverse Rosenblatt Transform
 %  function [IRTstruct] = TT_DIRT_APPROX(x0, logpostfun, beta, varargin)
 % Inputs:
-%   x0: d x 1 cell array {x1...xd} of initial grid vectors on level 0
+%   x0: d x 1 cell array {x1...xd} of initial grid vectors on level 0, or
+%       'oned' classes from ftt.m
 %   logpostfun: @(x,\beta_min,\beta_max) function for producing
 %               log(density ratios) lpi_{\beta_max}(x) - lpi_{\beta_min}(x)
 %   beta: array of bridging parameters (e.g. reciprocal temperatures)
@@ -126,8 +127,9 @@ if (interpolation(1)~='s')&&(~boundary)
 end
 
 % Zero level needs special treatment, as the box for X can be arbitrary
-if (isa(x0{1}, 'struct'))&&(strcmp(crossmethod, 'build_ftt'))
-    % This is for build_ftt, x0 is a cell of oned polys
+if (isa(x0{1}, 'oned'))
+    % This is for FTT, x0 is a cell of oned polys
+    crossmethod = 'build_ftt';
     if (isempty(nq))
         nq = cellfun(@(p)p.order, x0);
     end
@@ -186,18 +188,12 @@ if (ilvl==0)
                 'aux', X, 'tol_exit', stoptol(1), 'auxfun', @(x)exp(logpostfun_vec(x, 0,beta(1), logpostfun, vec)*0.5));
             
         case 'build_ftt'
-            debug_size = max(y0(:,1)) + kickrank(1)*nswp(1);
-            debug_x = zeros(d, debug_size);
-            for k = 1:d
-                debug_x(k,:) = sample_oned_domain(x0{k}, debug_size);
-            end
-            opts = ftt_options('method', 'AMEN', 'ng_flag', false, 'oned_ref', x0, ...
-                'err_tol', stoptol(1), 'loc_err_tol', trunctol(1), 'max_als', nswp(1), ...
-                'kick_rank', kickrank(1), 'max_rank', 50, 'init_rank', max(y0(:,1)));
-            F0 = build_ftt(@(x)exp(logpostfun_vec(x', 0,beta(1), logpostfun, vec)*0.5)', d, [], opts, 'sample_x', debug_x, 'debug_x', debug_x);
-            F0.ng_flag = true; % set this manually after constructing the sqrt(function) explicitly
+            opts = FTToption('tt_method', 'amen', 'sqrt_flag', false, 'init_rank', max(y0(:,1)), ...
+                             'als_tol', stoptol(1), 'local_tol', trunctol(1)+1e-16, ...
+                             'max_rank', 50, 'max_als', nswp(1), 'kick_rank', kickrank(1));            
+            F0 = SIRT(@(x)exp(logpostfun_vec(x', 0,beta(1), logpostfun, vec)*0.5)', d, x0, opts);
             evalcnt1 = nan;
-            F0 = build_irt(F0);
+            F0 = marginalise(F0,1);
     end
     
     IRTstruct.evalcnt = [sum(evalcnt1); zeros(nlvl,1)];
@@ -230,6 +226,31 @@ if (ilvl==0)
         % Desintegrate tt_tensor into cell array for faster referencing
         F0 = core2cell(F0);
     end
+    if (isa(F0, 'FTT')) && (plotdiag)
+        % draw 1D marginals
+        Fdiag = zeros(0, d);
+        for i=1:d
+            Xplot = x0{i}.nodes';
+            Fdiag(1:numel(Xplot),i) = eval(int_block(F0, [1:i-1, i+1:d]), Xplot);
+        end
+        figure(1);
+        plot(Fdiag);
+        legend toggle;
+        title('1D marginal sqrt(densities)');
+        
+        % draw 2D marginal
+        figure(2);
+        [Xplot,Yplot]=meshgrid(x0{1}.nodes, x0{2}.nodes);
+        if (d==2)
+            surf(Xplot, Yplot, reshape(eval(F0, [Xplot(:) Yplot(:)]'), size(Xplot)), 'EdgeColor', 'none');
+        else
+            surf(Xplot, Yplot, reshape(eval(int_block(F0, 3:d), [Xplot(:) Yplot(:)]'), size(Xplot)), 'EdgeColor', 'none');
+        end
+        shading interp;
+        title('2D x_1 x_2 marginal')
+        drawnow;
+    end
+    
     
     
     % Populate the DIRT structure with the zeroth level
@@ -276,9 +297,9 @@ end
 % Set up 1D ansatz for other levels
 if (strcmp(crossmethod, 'build_ftt'))
     if (reference(1)=='u')
-        x = arrayfun(@(n)setup_oned(n, 'type', 'Chebyshev1st', 'domain', [0,1], 'bc', 'Neumann'), nq, 'UniformOutput', false);
+        x = arrayfun(@(n)Legendre(n, [0,1]), nq, 'UniformOutput', false);
     else
-        x = arrayfun(@(n)setup_oned(n, 'type', 'Fourier', 'domain', [-sigma,sigma]), nq, 'UniformOutput', false);
+        x = arrayfun(@(n)Fourier(n, [-sigma,sigma]), nq, 'UniformOutput', false);
     end
 else
     if (reference(1)=='u')
@@ -318,18 +339,13 @@ while (ilvl<=nlvl)
                 'aux', X, 'tol_exit', stoptol(ilvl+1), 'auxfun', @(x)dualbetafun(x,IRTstruct,logpostfun,beta(ilvl+1),beta(ilvl),lFshift, vec, reference, IRTdenom(ilvl+1)));
             
         case 'build_ftt'
-            debug_size = max(y0(:,ilvl+1)) + kickrank(ilvl+1)*nswp(ilvl+1);
-            debug_x = zeros(d, debug_size);
-            for k = 1:d
-                debug_x(k,:) = sample_oned_domain(x{k}, debug_size);
-            end
-            opts = ftt_options('method', 'AMEN', 'ng_flag', false, 'oned_ref', x, ...
-                'err_tol', stoptol(ilvl+1), 'loc_err_tol', trunctol(ilvl+1), 'max_als', nswp(ilvl+1), ...
-                'kick_rank', kickrank(ilvl+1), 'max_rank', 50, 'init_rank', max(y0(:,ilvl+1)));
-            F{ilvl} = build_ftt(@(x)dualbetafun(x',IRTstruct,logpostfun,beta(ilvl+1),beta(ilvl),lFshift, vec, reference, IRTdenom(ilvl+1))', d, [], opts, 'sample_x', debug_x, 'debug_x', debug_x);
-            F{ilvl}.ng_flag = true; % set this manually after constructing the sqrt(function) explicitly
+            opts = FTToption('tt_method', 'amen', 'sqrt_flag', false, 'init_rank', max(y0(:,ilvl+1)), ...
+                             'als_tol', stoptol(ilvl+1), 'local_tol', trunctol(ilvl+1)+1e-16, ...
+                             'max_rank', 50, 'max_als', nswp(ilvl+1), 'kick_rank', kickrank(ilvl+1));
+
+            F{ilvl} = SIRT(@(x)dualbetafun(x',IRTstruct,logpostfun,beta(ilvl+1),beta(ilvl),lFshift, vec, reference, IRTdenom(ilvl+1))', d, x, opts);
             evalcnt1 = nan;
-            F{ilvl} = build_irt(F{ilvl});
+            F{ilvl} = marginalise(F{ilvl},1);
     end
     
     IRTstruct.evalcnt(ilvl+1) = IRTstruct.evalcnt(ilvl+1) + sum(evalcnt1); % Record the number of evaluations
@@ -369,6 +385,30 @@ while (ilvl<=nlvl)
         
         % disintegrate into cells for faster sampling
         F{ilvl} = core2cell(F{ilvl});
+    end
+    if (isa(F{ilvl}, 'FTT')) && (plotdiag)
+        % draw 1D marginals
+        Fdiag = zeros(0, d);
+        for i=1:d
+            Xplot = x{i}.nodes';
+            Fdiag(1:numel(Xplot),i) = eval(int_block(F{ilvl}, [1:i-1, i+1:d]), Xplot);
+        end
+        figure(1);
+        plot(Fdiag);
+        legend toggle;
+        title('1D marginal sqrt(densities)');
+        
+        % draw 2D marginal
+        figure(2);
+        [Xplot,Yplot]=meshgrid(x{1}.nodes, x{2}.nodes);
+        if (d==2)
+            surf(Xplot, Yplot, reshape(eval(F{ilvl}, [Xplot(:) Yplot(:)]'), size(Xplot)), 'EdgeColor', 'none');
+        else
+            surf(Xplot, Yplot, reshape(eval(int_block(F{ilvl}, 3:d), [Xplot(:) Yplot(:)]'), size(Xplot)), 'EdgeColor', 'none');
+        end
+        shading interp;
+        title('2D u_1 u_2 marginal')
+        drawnow;
     end
     
     % Record the current DIRT stack
