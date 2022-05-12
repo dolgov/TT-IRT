@@ -5,10 +5,11 @@ function [xq, lFapp]=tt_irt_sqr(xsf, f, q)
 %   xsf: (d x 1) cell array of grid points (inc. boundaries) for all dimensions
 %   f: TT format of the SQRT(PDF) in the form of a tt_tensor, computed on a
 %      grid defined by xsf, with or without boundary points in each variable.
-%   q: seed points from [0,1]^d, defining the samples (an M x d matrix)
+%   q: seed points from [0,1]^D, defining the samples (an M x D matrix). To
+%      sample from marginal, 0 < D <= d is allowed.
 %
 % Outputs (sizes):
-%   xq: samples mapped from q by the inverse CDF (M x d matrix)
+%   xq: samples mapped from q by the inverse CDF (M x D matrix)
 %   lFapp: log(approximate PDF) (inv. Jacobian of xq) sampled on q
 %
 % See also: tt_irt_lin, tt_irt_fourier

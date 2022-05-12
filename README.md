@@ -1,13 +1,13 @@
 # TT-IRT
 Inverse Rosenblatt Transports (IRT) + MCMC sampling using Tensor Train (TT) approximation
 
-Algorithms and examples are described in "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] and "Deep Composition of Tensor Trains using Squared Inverse Rosenblatt Transports" [[arXiv:2007.06968](https://arxiv.org/abs/2007.06968)].
+Algorithms and examples are described in "Approximation and sampling of multivariate probability distributions in the tensor train decomposition" [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] and "Deep Composition of Tensor Trains using Squared Inverse Rosenblatt Transports" [[Found Comput Math](https://doi.org/10.1007/s10208-021-09537-5)].
 
 The toolbox consists of **matlab** and **python** parts. Moreover, the inverse Rosenblatt transform based on linear splines is also implemented in C with two types of integers, `matlab/utils/tt_irt1_int64.c` and `python/tt_irt_py/tt_irt1_int32.c` which can be linked into Matlab MEX, Python CTypes or other project.
 
 ### Changelog
 
- * `2.0` Squared (SIRT) and Deep (DIRT) Inverse Rosenblatt Transports [[arXiv:2007.06968](https://arxiv.org/abs/2007.06968)]. Functions are structured in directories. New `predator_prey` and `lorenz` examples for DIRT.
+ * `2.0` Squared (SIRT) and Deep (DIRT) Inverse Rosenblatt Transports [[Found Comput Math](https://doi.org/10.1007/s10208-021-09537-5)]. Functions are structured in directories. New `predator_prey` and `lorenz` examples for DIRT.
  * `1.1` improved baseline version where logarithms of density functions are used to prevent overflows. Debiasing functions return more diagnostic information. Grid work is simplified such that the sets of grid points are the same for `tt_irt` and tt_tensors. New interface of `tracemult*`, MEX version can handle complex numbers.
  * `1.0` original version used for numerical experiments in the [[Statistics and Computing](https://doi.org/10.1007/s11222-019-09910-z)] paper.
 
