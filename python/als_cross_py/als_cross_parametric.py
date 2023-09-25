@@ -144,6 +144,7 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
   Mc = coeff.r[0]   # number of coefficient components
   rc = coeff.r[1:]  
   ru = numpy.copy(rc)          # these will be TT ranks of the solution
+  coeff_old = coeff.copy()
   coeff = tt.vector.to_list(coeff)
   C0 = coeff[0]
   coeff = coeff[1:]
@@ -182,6 +183,7 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
     # v = v[:, :rc[i]] # TODO useless?
     rc[i] = numpy.shape(crc)[1]
     ind = tt.maxvol.maxvol(crc) 
+    # ind = numpy.arange(rc[i])
     crc = numpy.transpose(crc) # TODO reorder ok
     CC = crc[:, ind]
     crc = numpy.linalg.solve(CC, crc)
@@ -198,7 +200,12 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
     if random_init > 0 and i > 0:
       # Random sample coeff from the right
       ind = rng.integers(ny[i], size=(random_init))
-      xi = numpy.einsum('i...j,j...->i...', coeff[i][:, ind, :], xi) # TODO verify this works
+      # ind = [0]
+      xi_new = numpy.zeros((rc[i], random_init))
+      for k in range(random_init):
+        xi_new[:, k] = (coeff[i][:, ind[k], :].reshape(rc[i],rc[i+1])) @ xi[:rc[i+1], k]
+      # xi = numpy.einsum('i...j,j...->i...', coeff[i][:, ind, :], xi) # TODO verify this works
+      xi = xi_new.copy()
       UC[i] = xi
       ru[i] = random_init
     else:
@@ -230,6 +237,9 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
   # The coeff will not change anymore
   C0 = numpy.reshape(C0, (Mc, Nxc, rc[0]), order='F')
 
+  coeff_new = tt.vector.from_list([C0]+coeff)
+  print("err_c = "+str((coeff_old - coeff_new).norm()))
+  
   # Initialise cost profilers
   time_solve = 0
   time_project = 0
@@ -254,6 +264,9 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
         Ci = numpy.reshape(Ci, (Mc, Nxc, ru[0]), order='F')
 
       t1__uc = time.perf_counter()
+      
+      print("Ci")
+      print(Ci)
 
       if swp == 1:
         U0, A0s, F0 = assem_solve_fun(Ci)
@@ -290,8 +303,12 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
 
       max_dx = 0
 
+      print("U0")
+      print(U0)
+
       # Truncate U0 via full-pivoted cross approx
-      U0, v = localcross(U0, tol/numpy.sqrt(d)) # TODO find suitable ttpy function
+      # U0, v = localcross(U0, tol/numpy.sqrt(d)) # TODO find suitable ttpy function
+      U0, v = numpy.linalg.qr(U0)
       if swp > 1:
         u[0] = numpy.reshape(u[0], (ru[0], ny[0]*ru[1]), order='F')
         u[0] = numpy.matmul(v, u[0])
@@ -394,11 +411,12 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
         for j in range(len(cru)):
           Ai = numpy.matmul(crA, crC[:,j])
           Ai = numpy.reshape(Ai, (ru[i-1], ru[i-1]))
-          cru[j] = numpy.linalg.solve(Ai, crF[:,j])
+          cru[j] = numpy.linalg.solve(Ai, crF[:,j]).reshape(-1,1)
         
         cru = numpy.hstack(cru) 
 
-      cru = numpy.reshape(cru, (ru[i-1]*ny[i-1],ru[i]), order='F')
+      cru = numpy.reshape(cru, (ru[i-1]*ny[i-1],ru[i]), order='C')
+      print("cru shape = "+str(cru.shape[0]) + " "+str(cru.shape[1]))
 
       # error check
       if u[i-1] is None:
@@ -411,7 +429,8 @@ def als_cross_parametric(coeff, assem_solve_fun, tol , **varargin):
 
       if i < d and dir > 0: ##### left-right sweep ################
         # Truncate cru with cross
-        cru, v = localcross(cru, tol/numpy.sqrt(d))
+        # cru, v = localcross(cru, tol/numpy.sqrt(d))
+        cru, v = numpy.linalg.qr(cru)
         rv = v
         if kickrank > 0:
           # Update the residual and enrichment
