@@ -45,6 +45,7 @@ function [y,statvals,statind,Jy,evalcnt]=amen_cross_s(inp, fun, tol, varargin)
 %                   backward sweep, if 0, after any [0]
 %       o dir - direction of the first computing sweep [1]
 %               The warm-up goes in the opposite direction
+%       o normalize - normalize tensor components for compression [false]
 %       o auxinp - secondary input data
 %       o auxfun - secondary input function
 %
@@ -93,9 +94,11 @@ kickrank = 4;
 verb = 1;
 vec = true;
 exitdir=0;
+evaldir=0;       % In which direction the new cores should be evaluated
 tol_exit = tol;
 stop_sweep = 0;
 dir = 1;
+normalize = false;
 
 auxinp = [];
 auxfun = [];
@@ -124,10 +127,14 @@ while (i<length(vars))
             auxfun = vars{i+1};
         case 'exitdir'
             exitdir=vars{i+1};
+        case 'evaldir'
+            evaldir=vars{i+1};
         case 'tol_exit'
             tol_exit=vars{i+1};
         case 'dir'
             dir=vars{i+1};
+        case 'normalize'
+            normalize=vars{i+1};
         case {'sr', 'lr', 'sm', 'lm', 'si', 'li'} % Stat params
             soughts{i}=vars{i};
             i=i-1;
@@ -402,8 +409,22 @@ last_swp = 0;
 max_dx = 0;
 fevalcnt = 0;
 ievalcnt = 0;
+
+if (dir>0)
+    b = size(y{1},1);  % Initial guess of #components
+    y{1} = permute(y{1}, [2,3,1]);
+    y{1} = reshape(y{1}, 1, n(1), ry(2), b);
+else
+    b = size(y{d},3);
+    y{d} = reshape(y{d}, ry(d), n(d), 1, b);
+end
+
+% if (dir>0)
+%     tol_local = 0.5; % tol/sqrt(d); % 0.1;
+% end
+
 while (swp<=nswp)
-    if (swp==1)||(i~=istart)
+    if ((swp==1)||(i~=istart))&&((dir==evaldir)||(evaldir==0))
         % Evaluate the new core
         [cry,ievalcnt,fevalcnt] = evaluate_fun(i,Jy,Jy,n,ifun,ffun,X,rx,YX,YX,vec,ievalcnt,fevalcnt);
     else
@@ -467,9 +488,15 @@ while (swp<=nswp)
     end
     
     % Estimate the error -- now in C-norm
-    if (isempty(y{i})) || ((swp==1)&&(i==istart)&&(b>1))
-        y{i} = zeros(ry(i)*n(i)*ry(i+1)*b, 1);
+    if (isempty(y{i}))
+        y{i} = zeros(ry(i), n(i), ry(i+1), b);
     end
+    if (size(y{i},4)~=b)
+        y{i} = repmat(mean(y{i},4),1,1,1,b);
+    end
+%     if (isempty(y{i})) || ((swp==1)&&(i==istart)&&(b>1))
+%         y{i} = zeros(ry(i)*n(i)*ry(i+1)*b, 1);
+%     end
     y{i} = reshape(y{i}, ry(i)*n(i)*ry(i+1)*b, 1);
     cry = reshape(cry, ry(i)*n(i)*ry(i+1)*b, 1);
     dx = max(abs(cry-y{i}))/max(abs(cry));
@@ -482,7 +509,7 @@ while (swp<=nswp)
     if (i~=(d-istart+1))
         % We are at an intermediate block in the current sweep
         % Truncation
-        [y{i-iprev},y{i+inext},ry(i+inext),cry] = truncate_block(y{i-iprev}, y{i+inext}, tol_local, dir);
+        [y{i-iprev},y{i+inext},ry(i+inext),cry] = truncate_block(y{i-iprev}, y{i+inext}, tol_local, dir, normalize);
         crs = [];
         % Enrichment
         if (kickrank>0)
@@ -555,7 +582,7 @@ while (swp<=nswp)
         if (verb>0)
             fprintf('=amen_cross_s= swp=%d, max_dx=%3.3e, max_rank=%d, max_n=%d, cum#ievals=%d, cum#fevals=%d\n', swp, max_dx, max(ry), max(n), ievalcnt, fevalcnt);
         end
-        if (max_dx<tol_exit)
+        if (max_dx<tol_exit)&&((dir==evaldir)||(evaldir==0))
             last_swp = last_swp+1;
         end
         if ((last_swp>stop_sweep)||(swp>=nswp))&&((dir==exitdir)||(exitdir==0))
@@ -568,6 +595,11 @@ while (swp<=nswp)
         swp = swp+1;
         max_dx = 0;
         i = i+dir;
+        % if (dir>0)
+        %     tol_local = 0.5; % tol/sqrt(d); % 0.1;
+        % else
+        %     tol_local = tol/sqrt(d);
+        % end
     end
 end
 
@@ -584,14 +616,25 @@ end
 
 
 % Truncate a block via the full cross
-function [yl,yr,r1,y_trunc] = truncate_block(yl, yr, tol, dir)
+function [yl,yr,r1,y_trunc] = truncate_block(yl, yr, tol, dir, normalize)
 if (dir>0)
     % Reshape it
     [r0,nl,r1,b]=size(yl);
+    if (normalize)&&(tol>0)  % truncate normalized functions to ensure relative error
+        norms = sqrt(sum(sum(sum(abs(yl).^2,1),2),3));
+        norms(norms==0) = 1;
+        yl = yl./norms;
+    end
     yl = reshape(yl, r0*nl, []); % remaining dimensions may contain b
     if (tol>0)
         % Full-pivot cross should be more accurate
         [yl,rv]=localcross(yl, tol);
+        if (normalize) % put norms back
+            rv = reshape(rv, [], r1, b);
+            norms = reshape(norms, 1, 1, b);
+            rv = rv.*norms;
+            rv = reshape(rv, [], r1*b);
+        end
     else
         [yl,rv] = qr(yl, 0);
     end
@@ -612,12 +655,23 @@ if (dir>0)
 else
     % Reshape it
     [r1,nr,r2,b]=size(yr);
+    if (normalize)&&(tol>0)  % truncate normalized functions to ensure relative error
+        norms = sqrt(sum(sum(sum(abs(yr).^2,1),2),3));
+        norms(norms==0) = 1;
+        yr = yr./norms;
+    end
     yr = reshape(yr, r1, []);
     yr = yr.';
     yr = reshape(yr, nr*r2, b*r1);
     if (tol>0)
         % Full-pivot cross should be more accurate
         [yr,rv]=localcross(yr, tol);
+        if (normalize) % put norms back
+            rv = reshape(rv, [], b, r1);
+            norms = reshape(norms, 1, b, 1);
+            rv = rv.*norms;
+            rv = reshape(rv, [], b*r1);
+        end
     else
         [yr,rv] = qr(yr,0);
     end
@@ -713,8 +767,14 @@ if (~isempty(ifun))
         b = numel(cry);
         cry = reshape(cry, 1, b);
         cry = [cry; zeros(size(J,1)-1, b)];
-        for j=2:size(J,1)
-            cry(j,:) = ifun(J(j,:));
+        if isempty(gcp('nocreate'))
+            for j=2:size(J,1)
+                cry(j,:) = ifun(J(j,:));
+            end
+        else
+            parfor j=2:size(J,1)
+                cry(j,:) = ifun(J(j,:));
+            end
         end
     end
     ievalcnt = ievalcnt + size(J,1);
@@ -747,8 +807,14 @@ if (~isempty(ffun))
         b = numel(fy);
         fy = reshape(fy, 1, b);
         fy = [fy; zeros(ry1*n(i)*ry2-1, b)];
-        for j=2:(ry1*n(i)*ry2)
-            fy(j,:) = ffun(fx(j,:));
+        if isempty(gcp('nocreate'))
+            for j=2:(ry1*n(i)*ry2)
+                fy(j,:) = ffun(fx(j,:));
+            end
+        else
+            parfor j=2:(ry1*n(i)*ry2)
+                fy(j,:) = ffun(fx(j,:));
+            end
         end
     end
     if (isempty(ifun))
