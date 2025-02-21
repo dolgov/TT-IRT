@@ -160,6 +160,7 @@ if (isempty(IRTstruct))
     IRTstruct.reference = reference;
     IRTstruct.crossmethod = crossmethod;
     IRTstruct.interpolation = interpolation;
+    IRTstruct.evalcnt = [];
     % Initial guess
     Fprev = max(y0(:, min(2,size(y0,2))));
 else
@@ -171,6 +172,8 @@ else
     lFshift = IRTstruct.lFshift;
     Fprev = IRTstruct.Fprev;
 end
+
+IRTstruct.evalcnt = [IRTstruct.evalcnt; zeros(nlvl+1-numel(IRTstruct.evalcnt),1)];
 
 if (ilvl==0)
     fprintf('Approximating level 0, for beta=%g\n', beta(1));
@@ -196,7 +199,7 @@ if (ilvl==0)
             F0 = marginalise(F0,1);
     end
     
-    IRTstruct.evalcnt = [sum(evalcnt1); zeros(nlvl,1)];
+    IRTstruct.evalcnt(1) = sum(evalcnt1);
     
     if (isa(F0, 'tt_tensor'))
         if (plotdiag)

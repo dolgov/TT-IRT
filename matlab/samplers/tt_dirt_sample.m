@@ -1,4 +1,4 @@
-function [z,lFapp,lFex] = tt_dirt_sample(IRTstruct, q, logpostfun, vec)
+function [z,lFapp,lFex,zlast] = tt_dirt_sample(IRTstruct, q, logpostfun, vec)
 % Sampling of a density represented by a Deep Inverse Rosenblatt Transform
 % Inputs:
 %   IRTstruct: a structure from tt_dirt_approx with density ratios in TT
@@ -42,10 +42,11 @@ for j=nlvl:-1:1
         Fapp = Fapp';
         dlFapp = log(Fapp);
     else
+        xind = min(j, size(IRTstruct.x,2));
         if (IRTstruct.interpolation(1)=='s')
-            [z,dlFapp] = tt_irt_sqr(IRTstruct.x, IRTstruct.F{j}, z);
+            [z,dlFapp] = tt_irt_sqr(IRTstruct.x(:,xind), IRTstruct.F{j}, z);
         else
-            [z,dlFapp] = tt_irt_fourier(IRTstruct.x, IRTstruct.F{j}, z);
+            [z,dlFapp] = tt_irt_fourier(IRTstruct.x(:,xind), IRTstruct.F{j}, z);
         end
     end
     lFapp = lFapp + dlFapp; % Add log(Jacobian)
@@ -53,6 +54,9 @@ for j=nlvl:-1:1
         % Subtract log(reference density)
         lFapp = lFapp + sum(z.^2,2)/2 - log(2*cdf_factor^2/pi)*size(z,2)/2;
         % It might be useful to get the normalising constant correct
+    end
+    if (j==nlvl)
+        zlast = z;
     end
 end
 
