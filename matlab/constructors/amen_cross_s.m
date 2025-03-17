@@ -43,9 +43,14 @@ function [y,statvals,statind,Jy,evalcnt]=amen_cross_s(inp, fun, tol, varargin)
 %       o tol_exit - stopping tolerance [tol]
 %       o exitdir - if 1, return after the forward sweep, if -1, return the
 %                   backward sweep, if 0, after any [0]
+%       o evaldir - if 1, evaluate tensor elements on forward sweep only,
+%                   if -1, evaluate on backward sweep only, 
+%                   if 0, evaluate on both sweeps [0]
 %       o dir - direction of the first computing sweep [1]
 %               The warm-up goes in the opposite direction
 %       o normalize - normalize tensor components for compression [false]
+%       o scramble_tol - reset truncation tolerance to 0.5 on sweeps going
+%                        opposite of exitdir [false]
 %       o auxinp - secondary input data
 %       o auxfun - secondary input function
 %
@@ -99,6 +104,7 @@ tol_exit = tol;
 stop_sweep = 0;
 dir = 1;
 normalize = false;
+scramble_tol = false;
 
 auxinp = [];
 auxfun = [];
@@ -134,7 +140,9 @@ while (i<length(vars))
         case 'dir'
             dir=vars{i+1};
         case 'normalize'
-            normalize=vars{i+1};
+            normalize=vars{i+1};           
+        case 'scramble_tol'
+            scramble_tol=vars{i+1};
         case {'sr', 'lr', 'sm', 'lm', 'si', 'li'} % Stat params
             soughts{i}=vars{i};
             i=i-1;
@@ -397,6 +405,10 @@ if (kickrank>0)
     rz = [1; rz*ones(d-1,1); 1];
 end
 
+if (exitdir~=0) && (dir*((-1)^(nswp-1)) == exitdir)
+    warning('The last of %d sweeps has direction %d ~= exitdir. Reducing nswp to %d...', nswp, -exitdir, nswp-1);
+    nswp = nswp - 1;
+end
 
 % Start the computation loop
 swp = 1;
@@ -416,15 +428,18 @@ if (dir>0)
     y{1} = reshape(y{1}, 1, n(1), ry(2), b);
 else
     b = size(y{d},3);
+    if ismatrix(y{d})
+        b = 0;
+    end
     y{d} = reshape(y{d}, ry(d), n(d), 1, b);
 end
 
-% if (dir>0)
-%     tol_local = 0.5; % tol/sqrt(d); % 0.1;
-% end
+if (scramble_tol)&&(dir~=exitdir)
+    tol_local = 0.5;
+end
 
 while (swp<=nswp)
-    if ((swp==1)||(i~=istart))&&((dir==evaldir)||(evaldir==0))
+    if (swp==1) || ((i~=istart) && ((dir==evaldir) || (evaldir==0)))
         % Evaluate the new core
         [cry,ievalcnt,fevalcnt] = evaluate_fun(i,Jy,Jy,n,ifun,ffun,X,rx,YX,YX,vec,ievalcnt,fevalcnt);
     else
@@ -595,11 +610,11 @@ while (swp<=nswp)
         swp = swp+1;
         max_dx = 0;
         i = i+dir;
-        % if (dir>0)
-        %     tol_local = 0.5; % tol/sqrt(d); % 0.1;
-        % else
-        %     tol_local = tol/sqrt(d);
-        % end
+        if (scramble_tol)&&(dir~=exitdir)
+            tol_local = 0.5;
+        else
+            tol_local = tol/sqrt(d);
+        end
     end
 end
 
